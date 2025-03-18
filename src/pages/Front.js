@@ -13,7 +13,7 @@ function Front() {
             <HeaderSL />
 
             {/* Image Section */}
-            <main className="flex items-center justify-center flex-grow p-4 mt-60 mb-20 bg-gray-200 flex-wrap">
+            <main className="flex items-center justify-center flex-grow p-4 mt-40 mb-20 bg-gray-200 flex-wrap">
                 <motion.img
                     src="mainpageimage.png"
                     alt="Description of Left Image"
