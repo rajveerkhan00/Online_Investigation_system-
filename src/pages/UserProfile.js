@@ -35,11 +35,10 @@ const Profile = () => {
 
   // Fetch user data from Firestore
   useEffect(() => {
-    // Use onAuthStateChanged to wait for Firebase Authentication to initialize
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         toast.error("No user found. Please log in.");
-        navigate("/User/Login"); // Redirect to login if no user is found
+        navigate("/User/Login");
         return;
       }
 
@@ -48,25 +47,24 @@ const Profile = () => {
         if (userDoc.exists()) {
           const data = userDoc.data();
           if (data.role === "user") {
-            setUserData(data); // Set user data if role is "user"
+            setUserData(data);
             setEmailVerified(user.emailVerified);
           } else {
             toast.error("Unauthorized access. Only users can access this page.");
-            navigate("/User/Login"); // Redirect if role is not "user"
+            navigate("/User/Login");
           }
         } else {
           toast.error("User data not found.");
-          navigate("/User/Login"); // Redirect if user data is not found
+          navigate("/User/Login");
         }
       } catch (error) {
         toast.error("Error fetching profile data.");
-        navigate("/User/Login"); // Redirect on error
+        navigate("/User/Login");
       } finally {
         setLoading(false);
       }
     });
 
-    // Cleanup the observer when the component unmounts
     return () => unsubscribe();
   }, [navigate]);
 
@@ -163,18 +161,18 @@ const Profile = () => {
   }
 
   return (
-    <div className="bg-gray-200">
+    <div className="bg-gray-200 min-h-screen flex flex-col">
       <HeaderLS />
       <Chatbot />
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-      <div className="flex items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8">
-        <div className="w-4/5 sm:w-full max-w-md p-8 space-y-6 bg-gray-100 rounded-lg shadow-md">
-          <h1 className="text-2xl font-bold text-center text-gray-800">Profile</h1>
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+        <div className="w-full max-w-md p-8 space-y-6 bg-gray-200 rounded-xl shadow-2xl transform transition-all duration-300 hover:scale-105">
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">Profile</h1>
 
           {/* Display User Email */}
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-700">Your Email</h2>
-            <p className="text-lg text-gray-600">{userData?.email}</p>
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">Your Email</h2>
+            <p className="text-xl sm:text-xl md:text-3xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8">{userData?.email}</p>
             <span
               className={`inline-block text-lg font-semibold px-4 py-1 mt-3 rounded-full ${
                 emailVerified
@@ -185,96 +183,102 @@ const Profile = () => {
               {emailVerified ? "Verified ✔️" : "Not Verified ❌"}
             </span>
           </div>
-
           {!emailVerified && (
-            <button
-              className="w-full bg-yellow-500 text-white px-5 py-2 rounded-lg shadow-md hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300"
-              onClick={sendVerificationEmail}
-            >
-              Verify Email
-            </button>
-          )}
+  <div className="flex justify-center">
+    <button
+      className="w-50 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
+      onClick={sendVerificationEmail}
+    >
+      Verify Email
+    </button>
+  </div>
+)}
+<div className="mt-8 space-y-4 flex flex-col items-center">
+  {/* Change Password Button */}
+  <button
+    className="w-72 sm:w-72 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
+    onClick={() => setShowPasswordFields(!showPasswordFields)}
+  >
+    Change Password
+  </button>
 
-          <div className="mt-8 space-y-4">
-            <button
-              className="w-full bg-indigo-500 text-white py-3 rounded-lg hover:bg-indigo-600 transition-colors duration-300"
-              onClick={() => setShowPasswordFields(!showPasswordFields)}
-            >
-              Change Password
-            </button>
-            {showPasswordFields && (
-              <div className="space-y-4">
-                <input
-                  type="password"
-                  placeholder="Old password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-                <input
-                  type="password"
-                  placeholder="New password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-                <input
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-                <button
-                  className="w-full bg-indigo-700 text-white py-3 rounded-lg hover:bg-indigo-800 transition-colors duration-300"
-                  onClick={handlePasswordChange}
-                  disabled={updatingPassword}
-                >
-                  {updatingPassword ? (
-                    <TailSpin color="#FFFFFF" height={24} width={24} />
-                  ) : (
-                    "Update Password"
-                  )}
-                </button>
-              </div>
-            )}
+  {showPasswordFields && (
+    <div className="w-72 sm:w-72 space-y-4">
+      <input
+        type="password"
+        placeholder="Old password"
+        value={oldPassword}
+        onChange={(e) => setOldPassword(e.target.value)}
+        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      />
+      <input
+        type="password"
+        placeholder="New password"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      />
+      <input
+        type="password"
+        placeholder="Confirm new password"
+        value={confirmNewPassword}
+        onChange={(e) => setConfirmNewPassword(e.target.value)}
+        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      />
+      <button
+        className="w-72 sm:w-72 bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-indigo-800 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
+        onClick={handlePasswordChange}
+        disabled={updatingPassword}
+      >
+        {updatingPassword ? (
+          <TailSpin color="#FFFFFF" height={24} width={24} />
+        ) : (
+          "Update Password"
+        )}
+      </button>
+    </div>
+  )}
 
-            <button
-              className="w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition-colors duration-300"
-              onClick={() => setShowDeleteFields(!showDeleteFields)}
-            >
-              Delete Account
-            </button>
-            {showDeleteFields && (
-              <div className="space-y-4">
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <button
-                  className="w-full bg-red-700 text-white py-3 rounded-lg hover:bg-red-800 transition-colors duration-300"
-                  onClick={handleDeleteAccount}
-                  disabled={deletingAccount}
-                >
-                  {deletingAccount ? (
-                    <TailSpin color="#FFFFFF" height={24} width={24} />
-                  ) : (
-                    "Delete Account"
-                  )}
-                </button>
-              </div>
-            )}
+  {/* Delete Account Button */}
+  <button
+    className="w-72 sm:w-72 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-red-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
+    onClick={() => setShowDeleteFields(!showDeleteFields)}
+  >
+    Delete Account
+  </button>
 
-            <button
-              className="w-full bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors duration-300"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          </div>
+  {showDeleteFields && (
+    <div className="w-72 sm:w-72 space-y-4">
+      <input
+        type="password"
+        placeholder="Enter your password"
+        value={deletePassword}
+        onChange={(e) => setDeletePassword(e.target.value)}
+        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+      />
+      <button
+        className="w-72 sm:w-72 bg-red-700 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-red-800 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
+        onClick={handleDeleteAccount}
+        disabled={deletingAccount}
+      >
+        {deletingAccount ? (
+          <TailSpin color="#FFFFFF" height={24} width={24} />
+        ) : (
+          "Delete Account"
+        )}
+      </button>
+    </div>
+  )}
+
+  {/* Logout Button */}
+  <button
+    className="w-72 sm:w-72 bg-gray-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-gray-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
+    onClick={handleLogout}
+  >
+    Logout
+  </button>
+</div>
+
         </div>
       </div>
       <Footer />
