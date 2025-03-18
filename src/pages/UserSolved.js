@@ -125,13 +125,13 @@ const FIRSubmission = () => {
       />
 
       <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-left mb-10 mt-10">
+        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
           Online FIR Submission System
         </h1>
 
         {/* Submitted FIRs List */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-6">Solved Cases</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">Solved Cases</h2>
           {loading ? (
             <div className="flex justify-center">
               <TailSpin color="#6366f1" height={50} width={50} />

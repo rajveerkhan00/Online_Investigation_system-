@@ -312,13 +312,13 @@ const FIRSubmission = () => {
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-center mb-8 mt-8">
+        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
           Active FIR Cases
         </h1>
 
         <div className="mt-12">
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
               Active Cases ({firs.filter((f) => f.status === "Active").length})
             </h2>
             {loading ? (
