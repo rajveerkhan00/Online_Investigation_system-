@@ -13,34 +13,35 @@ function Header() {
             </div>
             
             <div className="relative">
-                <button 
-                    className="flex items-center space-x-2 text-white font-semibold py-2 px-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-md hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                >
-                    <UserPlus className="w-5 h-5 text-white" />
-                    <span className="font-bold text-sm">Login</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-300 rounded-lg shadow-xl overflow-hidden z-50 transition-opacity duration-300">
-                        <Link 
-                            to="/User/login" 
-                            className="flex items-center px-4 py-3 text-gray-800 hover:bg-blue-100 hover:text-blue-700 font-medium space-x-2 transition-all"
-                        >
-                            <User className="w-5 h-5 text-blue-600" />
-                            <span>Login as a User</span>
-                        </Link>
-                        <Link 
-                            to="/Investigator/login" 
-                            className="flex items-center px-4 py-3 text-gray-800 hover:bg-purple-100 hover:text-purple-700 font-medium space-x-2 transition-all"
-                        >
-                            <Shield className="w-5 h-5 text-purple-600" />
-                            <span>Login as an Investigator</span>
-                        </Link>
-                    </div>
-                )}
-            </div>
+  <button 
+    className="flex items-center space-x-2 text-white font-semibold py-1 px-2 sm:py-2 sm:px-3 text-xs sm:text-sm bg-gradient-to-r from-blue-500 to-purple-600 rounded-md shadow-md hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
+    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+  >
+    <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+    <span className="font-bold text-[10px] sm:text-xs">Login</span>
+    <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+  </button>
+  
+  {isDropdownOpen && (
+    <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white border border-gray-300 rounded-lg shadow-xl overflow-hidden z-50 transition-opacity duration-300">
+      <Link 
+        to="/User/login" 
+        className="flex items-center px-3 sm:px-4 py-2 text-gray-800 hover:bg-gray-100 hover:text-gray-700 font-medium space-x-2 transition-all"
+      >
+        <User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+        <span className="text-[10px] sm:text-xs">Login as a User</span>
+      </Link>
+      <Link 
+        to="/Investigator/login" 
+        className="flex items-center px-3 sm:px-4 py-2 text-gray-800 hover:bg-gray-100 hover:text-gray-700 font-medium space-x-2 transition-all"
+      >
+        <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+        <span className="text-[10px] sm:text-xs">Login as an Investigator</span>
+      </Link>
+    </div>
+  )}
+</div>
+
         </header>
     );
 }
