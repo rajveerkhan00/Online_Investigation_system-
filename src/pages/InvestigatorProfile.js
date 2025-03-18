@@ -177,9 +177,7 @@ const Profile = () => {
                 Your Email
               </h2>
               <p
-                className="text-xl sm:text-xl md:text-2xl lg:text-2xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8
-"
-              >
+                className="text-xl sm:text-xl md:text-2xl lg:text-2xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8">
                 {investigator?.email}
               </p>
               <span
