@@ -82,7 +82,7 @@ function Signup() {
             User / Signup
           </div>
 
-          <h2 className="text-2xl font-bold text-center text-gray-800">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 ">
             Signup Now
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
