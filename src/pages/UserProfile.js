@@ -50,7 +50,9 @@ const Profile = () => {
             setUserData(data);
             setEmailVerified(user.emailVerified);
           } else {
-            toast.error("Unauthorized access. Only users can access this page.");
+            toast.error(
+              "Unauthorized access. Only users can access this page."
+            );
             navigate("/User/Login");
           }
         } else {
@@ -69,7 +71,11 @@ const Profile = () => {
   }, [navigate]);
 
   const handlePasswordChange = async () => {
-    if (!oldPassword.trim() || !newPassword.trim() || !confirmNewPassword.trim()) {
+    if (
+      !oldPassword.trim() ||
+      !newPassword.trim() ||
+      !confirmNewPassword.trim()
+    ) {
       toast.warn("Please fill all password fields.");
       return;
     }
@@ -109,7 +115,12 @@ const Profile = () => {
       return;
     }
 
-    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to delete your account? This action cannot be undone."
+      )
+    )
+      return;
 
     const user = auth.currentUser;
     if (!user) {
@@ -120,7 +131,10 @@ const Profile = () => {
     setDeletingAccount(true);
 
     try {
-      const credential = EmailAuthProvider.credential(user.email, deletePassword);
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        deletePassword
+      );
       await reauthenticateWithCredential(user, credential);
       await deleteDoc(doc(db, "usersdata", user.uid));
       await deleteUser(user);
@@ -167,12 +181,18 @@ const Profile = () => {
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
       <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
         <div className="w-full max-w-md p-8 space-y-6 bg-gray-200 rounded-xl shadow-2xl transform transition-all duration-300 hover:scale-105">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">Profile</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
+            Profile
+          </h1>
 
           {/* Display User Email */}
           <div className="text-center">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">Your Email</h2>
-            <p className="text-xl sm:text-xl md:text-3xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8">{userData?.email}</p>
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
+              Your Email
+            </h2>
+            <p className="text-xl sm:text-xl md:text-3xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8">
+              {userData?.email}
+            </p>
             <span
               className={`inline-block text-lg font-semibold px-4 py-1 mt-3 rounded-full ${
                 emailVerified
@@ -184,101 +204,100 @@ const Profile = () => {
             </span>
           </div>
           {!emailVerified && (
-  <div className="flex justify-center">
-    <button
-      className="w-50 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
-      onClick={sendVerificationEmail}
-    >
-      Verify Email
-    </button>
-  </div>
-)}
-<div className="mt-8 space-y-4 flex flex-col items-center">
-  {/* Change Password Button */}
-  <button
-    className="w-72 sm:w-72 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
-    onClick={() => setShowPasswordFields(!showPasswordFields)}
-  >
-    Change Password
-  </button>
+            <div className="flex justify-center">
+              <button
+                className="w-full max-w-[120px] bg-yellow-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+                onClick={sendVerificationEmail}
+              >
+                Verify Email
+              </button>
+            </div>
+          )}
+          <div className="mt-8 space-y-3 flex flex-col items-center px-2">
+            {/* Change Password Button */}
+            <button
+              className="w-full max-w-[200px] bg-yellow-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+              onClick={() => setShowPasswordFields(!showPasswordFields)}
+            >
+              Change Password
+            </button>
 
-  {showPasswordFields && (
-    <div className="w-72 sm:w-72 space-y-4">
-      <input
-        type="password"
-        placeholder="Old password"
-        value={oldPassword}
-        onChange={(e) => setOldPassword(e.target.value)}
-        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-      />
-      <input
-        type="password"
-        placeholder="New password"
-        value={newPassword}
-        onChange={(e) => setNewPassword(e.target.value)}
-        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-      />
-      <input
-        type="password"
-        placeholder="Confirm new password"
-        value={confirmNewPassword}
-        onChange={(e) => setConfirmNewPassword(e.target.value)}
-        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-      />
-      <button
-        className="w-72 sm:w-72 bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-indigo-800 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
-        onClick={handlePasswordChange}
-        disabled={updatingPassword}
-      >
-        {updatingPassword ? (
-          <TailSpin color="#FFFFFF" height={24} width={24} />
-        ) : (
-          "Update Password"
-        )}
-      </button>
-    </div>
-  )}
+            {showPasswordFields && (
+              <div className="w-full max-w-[200px] space-y-3">
+                <input
+                  type="password"
+                  placeholder="Old password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <input
+                  type="password"
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <button
+                  className="w-full max-w-[200px] bg-indigo-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-indigo-800 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+                  onClick={handlePasswordChange}
+                  disabled={updatingPassword}
+                >
+                  {updatingPassword ? (
+                    <TailSpin color="#FFFFFF" height={20} width={20} />
+                  ) : (
+                    "Update Password"
+                  )}
+                </button>
+              </div>
+            )}
 
-  {/* Delete Account Button */}
-  <button
-    className="w-72 sm:w-72 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-red-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
-    onClick={() => setShowDeleteFields(!showDeleteFields)}
-  >
-    Delete Account
-  </button>
+            {/* Delete Account Button */}
+            <button
+              className="w-full max-w-[200px] bg-red-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-red-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+              onClick={() => setShowDeleteFields(!showDeleteFields)}
+            >
+              Delete Account
+            </button>
 
-  {showDeleteFields && (
-    <div className="w-72 sm:w-72 space-y-4">
-      <input
-        type="password"
-        placeholder="Enter your password"
-        value={deletePassword}
-        onChange={(e) => setDeletePassword(e.target.value)}
-        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-      />
-      <button
-        className="w-72 sm:w-72 bg-red-700 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-red-800 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
-        onClick={handleDeleteAccount}
-        disabled={deletingAccount}
-      >
-        {deletingAccount ? (
-          <TailSpin color="#FFFFFF" height={24} width={24} />
-        ) : (
-          "Delete Account"
-        )}
-      </button>
-    </div>
-  )}
+            {showDeleteFields && (
+              <div className="w-full max-w-[200px] space-y-3">
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+                <button
+                  className="w-full max-w-[200px] bg-red-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-red-800 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                >
+                  {deletingAccount ? (
+                    <TailSpin color="#FFFFFF" height={20} width={20} />
+                  ) : (
+                    "Delete Account"
+                  )}
+                </button>
+              </div>
+            )}
 
-  {/* Logout Button */}
-  <button
-    className="w-72 sm:w-72 bg-gray-500 text-white px-6 py-3 rounded-xl shadow-lg hover:bg-gray-600 transition-transform transform hover:scale-105 duration-300 font-semibold text-lg tracking-wide"
-    onClick={handleLogout}
-  >
-    Logout
-  </button>
-</div>
-
+            {/* Logout Button */}
+            <button
+              className="w-full max-w-[200px] bg-gray-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-gray-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
       <Footer />
