@@ -147,34 +147,35 @@ const Client = () => {
         )}
       </section>
 
-       {/* Signup Button Section */}
-       <div className="relative flex justify-center items-center bg-gray-200 py-4">
-                <div className="relative">
-                    <button
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="w-48 flex justify-between items-center text-white font-semibold py-3 px-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all"
-                    >
-                        <div className="flex items-center space-x-2">
-                            <UserPlus className="w-6 h-6 text-white" />
-                            <span className="font-bold text-lg">Signup</span>
-                        </div>
-                        <ChevronDown className="w-5 h-5 text-white" />
-                    </button>
-                    {isOpen && (
-                        <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg overflow-hidden">
-                            <Link to="/User/Signup" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                                <User className="w-5 h-5 mr-2 text-blue-500" /> Signup as User
-                            </Link>
-                            <Link to="/Investigator/Signup" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                                <Briefcase className="w-5 h-5 mr-2 text-purple-500" /> Signup as Investigator
-                            </Link>
-                            <Link to="/Admin/Signup" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                                <ShieldCheck className="w-5 h-5 mr-2 text-red-500" /> Signup as Admin
-                            </Link>
-                        </div>
-                    )}
-                </div>
+    {/* Signup Button Section */}
+<div className="relative flex justify-center items-center bg-gray-200 py-4">
+    <div className="relative">
+        <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="w-36 sm:w-48 flex justify-between items-center text-white font-semibold py-2 sm:py-3 px-4 sm:px-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all"
+        >
+            <div className="flex items-center space-x-2">
+                <UserPlus className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
+                <span className="font-bold text-sm sm:text-lg">Signup</span>
             </div>
+            <ChevronDown className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
+        </button>
+        {isOpen && (
+            <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg overflow-hidden">
+                <Link to="/User/Signup" className="flex items-center px-4 sm:px-6 py-3 text-gray-700 hover:bg-gray-100">
+                    <User className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-blue-500" /> Signup as User
+                </Link>
+                <Link to="/Investigator/Signup" className="flex items-center px-4 sm:px-6 py-3 text-gray-700 hover:bg-gray-100">
+                    <Briefcase className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-purple-500" /> Signup as Investigator
+                </Link>
+                <Link to="/Admin/Signup" className="flex items-center px-4 sm:px-6 py-3 text-gray-700 hover:bg-gray-100">
+                    <ShieldCheck className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-red-500" /> Signup as Admin
+                </Link>
+            </div>
+        )}
+    </div>
+</div>
+
       <Footer />
     </div>
   );
