@@ -61,7 +61,7 @@ const InvestigatorSignup = () => {
             <HeaderSL />
             <div className="pt-20 flex items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8">
                 <div className="relative w-4/5 sm:w-full max-w-md p-8 space-y-6 bg-gray-100 rounded-lg shadow-md">
-                    <div className="absolute top-3 left-4 text-gray-600 font-semibold text-sm">
+                    <div className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 ">
                         Investigator / Signup
                     </div>
                     <h2 className="text-2xl font-bold text-center text-gray-800">Signup Now</h2>
