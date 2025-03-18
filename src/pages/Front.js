@@ -13,33 +13,32 @@ function Front() {
             <HeaderSL />
 
             {/* Image Section */}
-            <main className="flex flex-col sm:flex-row items-center justify-center flex-grow p-4 bg-gray-200">
-    <motion.img
-        src="mainpageimage.png"
-        alt="Description of Left Image"
-        className="w-1/6 md:w-1/5 lg:w-1/6 h-auto"
-        initial={{ scale: 1 }}
-        animate={{ scale: [1, 0.8, 1] }}
-        transition={{ duration: 2, repeat: Infinity }}
-    />
-    <motion.img
-        src="mainpageimage.png"
-        alt="Description of Main Image"
-        className="w-1/3 md:w-1/2 lg:w-1/3 h-auto z-10"
-        initial={{ scale: 1 }}
-        animate={{ scale: [1, 0.9, 1] }}
-        transition={{ duration: 2, repeat: Infinity }}
-    />
-    <motion.img
-        src="mainpageimage.png"
-        alt="Description of Right Image"
-        className="w-1/6 md:w-1/5 lg:w-1/6 h-auto"
-        initial={{ scale: 1 }}
-        animate={{ scale: [1, 0.8, 1] }}
-        transition={{ duration: 2, repeat: Infinity }}
-    />
-</main>
-
+            <main className="flex items-center justify-center flex-grow p-4 mt-60 mb-20 bg-gray-200 flex-wrap">
+                <motion.img
+                    src="mainpageimage.png"
+                    alt="Description of Left Image"
+                    className="w-1/6 md:w-1/5 lg:w-1/6 h-auto"
+                    initial={{ scale: 1 }}
+                    animate={{ scale: [1, 0.8, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                />
+                <motion.img
+                    src="mainpageimage.png"
+                    alt="Description of Main Image"
+                    className="w-1/3 md:w-1/2 lg:w-1/3 h-auto z-10"
+                    initial={{ scale: 1 }}
+                    animate={{ scale: [1, 0.9, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                />
+                <motion.img
+                    src="mainpageimage.png"
+                    alt="Description of Right Image"
+                    className="w-1/6 md:w-1/5 lg:w-1/6 h-auto"
+                    initial={{ scale: 1 }}
+                    animate={{ scale: [1, 0.8, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                />
+            </main>
 
          
 
@@ -54,7 +53,7 @@ function Front() {
 </div>
 
 {/* Signup Button Section */}
-<div className="relative flex justify-center items-center bg-gray-200 py-3">
+<div className="relative flex justify-center items-center bg-gray-200 mb-40 py-3">
   <div className="relative">
     <button
       onClick={() => setIsOpen(!isOpen)}
