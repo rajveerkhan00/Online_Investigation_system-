@@ -28,34 +28,34 @@ function AboutUs() {
             <Header />
             <Navbar />
             <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
-            <div className="container mx-auto py-10 px-4 sm:px-6 lg:px-8">
-    <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-8">
+            import { FaUserSecret } from "react-icons/fa"; // Import investigator icon
+
+<div className="container mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-800 mb-8">
         🔍 Meet Our Investigators
     </h2>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {investigators.map((investigator) => (
             <div 
                 key={investigator.id} 
-                className="p-6 bg-white rounded-2xl border-4 border-blue-500 shadow-lg 
+                className="p-6 bg-gray-100 rounded-2xl border-4 border-gray-400 shadow-lg 
                 transition-transform transform hover:scale-105 hover:shadow-xl"
             >
                 <div className="flex flex-col items-center text-center">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-blue-500 overflow-hidden">
-                        <img 
-                            src={investigator.profilePic || "https://via.placeholder.com/100"} 
-                            alt="Investigator" 
-                            className="w-full h-full object-cover"
-                        />
+                    {/* Investigator Icon */}
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center 
+                        bg-gray-300 rounded-full border-4 border-gray-500">
+                        <FaUserSecret className="text-gray-700 text-5xl sm:text-6xl" />
                     </div>
                     <h3 className="mt-3 text-xl sm:text-2xl font-semibold text-gray-900">
                         {investigator.username}
                     </h3>
-                    <p className="text-gray-600 text-sm sm:text-base">{investigator.email}</p>
+                    <p className="text-gray-700 text-sm sm:text-base">{investigator.email}</p>
                 </div>
                 <button 
                     className="mt-5 w-full px-4 py-3 text-base sm:text-lg font-semibold text-white 
-                    bg-gradient-to-r from-blue-500 to-blue-700 rounded-lg hover:from-blue-600 hover:to-blue-800 
-                    transition-all focus:outline-none focus:ring-4 focus:ring-blue-400"
+                    bg-gray-600 rounded-lg hover:bg-gray-700 
+                    transition-all focus:outline-none focus:ring-4 focus:ring-gray-500"
                 >
                     💬 Start Chat
                 </button>
