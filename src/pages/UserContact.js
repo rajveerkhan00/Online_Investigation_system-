@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
+import { db } from '../firebase'; // Ensure the correct path to firebase.js
+import { collection, addDoc } from 'firebase/firestore';
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import Navbar from "../components/Navbar";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function ContactUs() {
     const [formData, setFormData] = useState({
@@ -10,8 +14,6 @@ function ContactUs() {
         subject: '',
         message: ''
     });
-    const [successMessage, setSuccessMessage] = useState("");
-    const [errorMessage, setErrorMessage] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
@@ -24,28 +26,14 @@ function ContactUs() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setSuccessMessage("");
-        setErrorMessage("");
         setLoading(true);
 
         try {
-            const response = await fetch('http://localhost:5000/api/contact', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Submission failed');
-            }
-
-            setSuccessMessage("Thank you for contacting us! We will get back to you shortly.");
+            await addDoc(collection(db, 'contacts'), formData);
+            toast.success("📩 Message sent successfully! We will get back to you shortly.");
             setFormData({ name: '', email: '', subject: '', message: '' }); // Reset form
         } catch (error) {
-            setErrorMessage(error.message || "Submission failed. Please try again.");
+            toast.error("❌ Submission failed. Please try again later.");
         } finally {
             setLoading(false);
         }
@@ -53,15 +41,12 @@ function ContactUs() {
 
     return (
         <div className="bg-gray-200">
-        <Header />
-      <Navbar />
+            <Header />
+            <Navbar />
+            <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
             <div className="flex items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8">
                 <div className="w-4/5 sm:w-full max-w-md p-8 space-y-6 bg-gray-100 rounded-lg shadow-md">
                     <h2 className="text-2xl font-bold text-center text-gray-800">Get in Touch</h2>
-
-                    {successMessage && <p className="text-green-500 text-sm">{successMessage}</p>}
-                    {errorMessage && <p className="text-red-500 text-sm">{errorMessage}</p>}
-
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-600">Name</label>
