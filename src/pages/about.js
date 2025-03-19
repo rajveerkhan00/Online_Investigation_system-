@@ -30,6 +30,8 @@ function AboutUs() {
             <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
             import { FaUserSecret } from "react-icons/fa"; // Import investigator icon
 
+            import { FaUserSecret } from "react-icons/fa"; // Import investigator icon
+
 <div className="container mx-auto py-10 px-4 sm:px-6 lg:px-8">
     <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-800 mb-8">
         🔍 Meet Our Investigators
@@ -63,6 +65,7 @@ function AboutUs() {
         ))}
     </div>
 </div>
+
 
             <Footer />
         </div>
