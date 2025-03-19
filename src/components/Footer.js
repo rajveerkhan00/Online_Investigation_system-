@@ -1,14 +1,33 @@
-import React from "react";
-import { auth } from "../firebase"; // Ensure Firebase is correctly imported
-import { Link } from "react-router-dom"; // Import Link for navigation
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; 
+import { auth } from "../firebase"; 
+import { toast } from "react-toastify"; 
+import "react-toastify/dist/ReactToastify.css";
 
 const Footer = () => {
-  const currentUser = auth.currentUser; // Get the currently logged-in user
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
 
-  if (!currentUser) {
-    alert("Please login/signup first to access this feature.");
-    return null; // Don't render the footer if no user is logged in
-  }
+  // Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe(); // Cleanup function
+  }, []);
+
+  // Function to handle navigation with authentication check
+  const handleNavigation = (path) => {
+    if (!currentUser) {
+      toast.error("Login/Signup first to access this feature!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } else {
+      navigate(path);
+    }
+  };
 
   return (
     <footer className="bg-gray-200 text-gray-800 py-6 px-4">
@@ -43,14 +62,14 @@ const Footer = () => {
           <h2 className="font-medium text-gray-900 text-sm mb-2">OUR WEBSITE</h2>
           <ul>
             <li>
-              <Link to="/User/Home" className="text-gray-700 hover:text-gray-800">
+              <button onClick={() => handleNavigation("/User/Home")} className="text-gray-700 hover:text-gray-800">
                 HOME
-              </Link>
+              </button>
             </li>
             <li>
-              <Link to="/About" className="text-gray-700 hover:text-gray-800">
+              <button onClick={() => handleNavigation("/About")} className="text-gray-700 hover:text-gray-800">
                 ABOUT US
-              </Link>
+              </button>
             </li>
           </ul>
         </div>
@@ -60,14 +79,14 @@ const Footer = () => {
           <h2 className="font-medium text-gray-900 text-sm mb-2">CONTACT</h2>
           <ul>
             <li>
-              <Link to="/User/Contact" className="text-gray-700 hover:text-gray-800">
+              <button onClick={() => handleNavigation("/User/Contact")} className="text-gray-700 hover:text-gray-800">
                 CONTACT US
-              </Link>
+              </button>
             </li>
             <li>
-              <Link to="/User/Feedback" className="text-gray-700 hover:text-gray-800">
+              <button onClick={() => handleNavigation("/User/Feedback")} className="text-gray-700 hover:text-gray-800">
                 GIVE FEEDBACK
-              </Link>
+              </button>
             </li>
           </ul>
         </div>
@@ -77,14 +96,14 @@ const Footer = () => {
           <h2 className="font-medium text-gray-900 text-sm mb-2">MAJOR</h2>
           <ul>
             <li>
-              <Link to="#" className="text-gray-700 hover:text-gray-800">
+              <button onClick={() => handleNavigation("/major-ducts")} className="text-gray-700 hover:text-gray-800">
                 OUR DUCTS
-              </Link>
+              </button>
             </li>
             <li>
-              <Link to="#" className="text-gray-700 hover:text-gray-800">
+              <button onClick={() => handleNavigation("/major-ducts")} className="text-gray-700 hover:text-gray-800">
                 MAJOR DUCTS
-              </Link>
+              </button>
             </li>
           </ul>
         </div>
