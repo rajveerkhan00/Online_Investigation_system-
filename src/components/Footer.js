@@ -37,7 +37,7 @@ const Footer = () => {
           <h2 className="font-medium text-gray-900 tracking-widest text-sm mb-3">OUR WEBSITE</h2>
           <ul className="list-none">
             <li>
-              <a href="index.html" className="text-gray-700 hover:text-gray-800">
+              <a href="/User/Home" className="text-gray-700 hover:text-gray-800">
                 HOME
               </a>
             </li>
