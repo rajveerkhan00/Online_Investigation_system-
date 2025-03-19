@@ -42,7 +42,7 @@ const Footer = () => {
               </a>
             </li>
             <li>
-              <a href="aboutus.html" className="text-gray-700 hover:text-gray-800">
+              <a href="/About" className="text-gray-700 hover:text-gray-800">
                 ABOUT US
               </a>
             </li>
@@ -54,12 +54,12 @@ const Footer = () => {
           <h2 className="font-medium text-gray-900 tracking-widest text-sm mb-3">CONTACT</h2>
           <ul className="list-none">
             <li>
-              <a href="contactus.html" className="text-gray-700 hover:text-gray-800">
+              <a href="/User/Contact" className="text-gray-700 hover:text-gray-800">
                 CONTACT US
               </a>
             </li>
             <li>
-              <a href="feedback.html" className="text-gray-700 hover:text-gray-800">
+              <a href="/User/Feedback" className="text-gray-700 hover:text-gray-800">
                 GIVE FEEDBACK
               </a>
             </li>

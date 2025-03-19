@@ -22,14 +22,14 @@ import UserSolved from '../pages/UserSolved';
 import NewFir from '../pages/NewFir';
 import SolvedFir from '../pages/SolvedFir';
 import RunningFir from '../pages/RunningFir';
+import Feedback from '../pages/UserFeedback';
+import Contact from '../pages/UserContact';
+import About from '../pages/about';
 
 // import Successfulcases from '../pages/successfulcases';
 // import Mycases from '../pages/mycases';
 // import Completecases from '../pages/completecases';
 // import CurrnetCase from '../pages/currentcase';
-// import Feedback from '../pages/feedback';
-// import Contact from '../pages/contact';
-// import About from '../pages/about';
 
 
 export default function Menuroutes() {
@@ -58,15 +58,15 @@ export default function Menuroutes() {
           <Route path="/Investigator/PendingFir" element={<NewFir />} />    
           <Route path="/Investigator/SolvedFir" element={<SolvedFir />} />    
           <Route path="/Investigator/RunningFir" element={<RunningFir />} />    
-          
+          <Route path="/User/Feedback" element={<Feedback />} />
+          <Route path="/User/Contact" element={<Contact />} />
+          <Route path="/About" element={<About />} /> 
+         
           {/* 
           <Route path="/Successfulcases" element={<Successfulcases />} />
           <Route path="/Currentcase" element={<CurrnetCase />} />
           <Route path="/Completecases" element={<Completecases />} />
           <Route path="/Mycases" element={<Mycases />} />
-          <Route path="/Feedback" element={<Feedback />} />
-          <Route path="/Contact" element={<Contact />} />
-          <Route path="/About" element={<About />} /> 
          */}
           
         </Routes>
