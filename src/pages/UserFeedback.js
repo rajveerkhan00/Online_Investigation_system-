@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Footer from "../components/Footer";
+import Header from "../components/Header";
+import Navbar from "../components/Navbar";
 
 function FeedbackForm() {
     const [formData, setFormData] = useState({
@@ -50,14 +52,9 @@ function FeedbackForm() {
 
     return (
         <div className="bg-gray-200">
-            <header className="flex items-center justify-between p-4 bg-gray-200 flex-wrap pt-6">
-                <div className="flex items-center space-x-2">
-                    <img src="favicon.webp" alt="Favicon" className="w-8 h-8 rounded-full" />
-                    <h1 className="text-lg font-bold text-gray-800">Feedback System</h1>
-                </div>
-            </header>
-
-            <div className="flex items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8">
+        <Header />
+      <Navbar />
+         <div className="flex items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8">
                 <div className="w-4/5 sm:w-full max-w-md p-8 space-y-6 bg-gray-100 rounded-lg shadow-md">
                     <h2 className="text-2xl font-bold text-center text-gray-800">Share Your Feedback</h2>
 

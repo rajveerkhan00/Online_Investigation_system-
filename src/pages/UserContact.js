@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Footer from "../components/Footer";
+import Header from "../components/Header";
+import Navbar from "../components/Navbar";
 
 function ContactUs() {
     const [formData, setFormData] = useState({
@@ -51,6 +53,8 @@ function ContactUs() {
 
     return (
         <div className="bg-gray-200">
+        <Header />
+      <Navbar />
             <header className="flex items-center justify-between p-4 bg-gray-200 flex-wrap pt-6">
                 <div className="flex items-center space-x-2">
                     <img src="favicon.webp" alt="Favicon" className="w-8 h-8 rounded-full" />
