@@ -14,19 +14,20 @@ const Footer = () => {
 
         {/* Social Media Links */}
         <div className="flex space-x-6 mb-4 md:mb-0">
-          <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
-            <i className="fab fa-facebook-f fa-lg"></i>
-          </a>
-          <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
-            <i className="fab fa-twitter fa-lg"></i>
-          </a>
-          <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
-            <i className="fab fa-linkedin-in fa-lg"></i>
-          </a>
-          <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
-            <i className="fab fa-instagram fa-lg"></i>
-          </a>
-        </div>
+  <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
+    <i className="fa-brands fa-facebook-f fa-lg"></i>
+  </a>
+  <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
+    <i className="fa-brands fa-twitter fa-lg"></i>
+  </a>
+  <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
+    <i className="fa-brands fa-linkedin-in fa-lg"></i>
+  </a>
+  <a href="#" className="text-gray-600 hover:text-gray-700 transition-colors duration-300">
+    <i className="fa-brands fa-instagram fa-lg"></i>
+  </a>
+</div>
+
       </div>
 
       {/* Navigation Links */}
