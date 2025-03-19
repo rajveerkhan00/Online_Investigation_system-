@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import HeaderSL from "../components/HeaderSL";
 import { ChevronDown, UserPlus, CheckCircle, User, Briefcase, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
+import "react-toastify/dist/ReactToastify.css";
 
 function Front() {
     const [isOpen, setIsOpen] = useState(false);
