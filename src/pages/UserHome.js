@@ -10,7 +10,6 @@ import { TailSpin } from "react-loader-spinner";
 import Chatbot from "../components/Chatbot";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
 
-
 const investigationSteps = [
   {
     phase: "Phase 1: Case Initiation & Planning",
@@ -100,7 +99,10 @@ const FIRSubmission = () => {
         }
 
         try {
-          const q = query(collection(db, "firs"), where("userId", "==", user.uid));
+          const q = query(
+            collection(db, "firs"),
+            where("userId", "==", user.uid)
+          );
           const querySnapshot = await getDocs(q);
           const firData = querySnapshot.docs.map((doc) => ({
             id: doc.id,
@@ -124,7 +126,9 @@ const FIRSubmission = () => {
     if (activeCaseId) {
       const fetchInvestigationData = async () => {
         try {
-          const investigationDoc = await getDocs(collection(db, "investigations"));
+          const investigationDoc = await getDocs(
+            collection(db, "investigations")
+          );
           const investigationData = investigationDoc.docs.find(
             (doc) => doc.data().firId === activeCaseId
           );
@@ -191,10 +195,14 @@ const FIRSubmission = () => {
   // Sort FIRs based on selected criteria
   const sortFirs = (firs, sortBy) => {
     if (sortBy === "date") {
-      return [...firs].sort((a, b) => new Date(b.incidentDateTime) - new Date(a.incidentDateTime));
+      return [...firs].sort(
+        (a, b) => new Date(b.incidentDateTime) - new Date(a.incidentDateTime)
+      );
     } else if (sortBy === "priority") {
-      const priorityOrder = { "Murder": 1, "Theft": 2, "Fraud": 3, "Other": 4 };
-      return [...firs].sort((a, b) => priorityOrder[a.incidentType] - priorityOrder[b.incidentType]);
+      const priorityOrder = { Murder: 1, Theft: 2, Fraud: 3, Other: 4 };
+      return [...firs].sort(
+        (a, b) => priorityOrder[a.incidentType] - priorityOrder[b.incidentType]
+      );
     }
     return firs;
   };
@@ -212,7 +220,9 @@ const FIRSubmission = () => {
             <p className="text-sm text-gray-600">{fir.incidentType}</p>
           </div>
           <span
-            className={`px-3 py-1 rounded-full text-sm ${getStatusColor(fir.status)}`}
+            className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
+              fir.status
+            )}`}
           >
             {fir.status}
           </span>
@@ -263,50 +273,47 @@ const FIRSubmission = () => {
           Your All Cases / FIRs
         </h1>
 
-{/* Sort Dropdown */}
-<div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
-  <div className="relative w-full sm:w-auto">
-    <button
-      onClick={() => setShowSortDropdown(!showSortDropdown)}
-      className="flex items-center justify-between sm:justify-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-md shadow-md hover:bg-gray-800 transition duration-300 w-full sm:w-auto text-sm sm:text-base"
-    >
-      Sort <ChevronDown size={16} className="sm:size-18" />
-    </button>
+        {/* Sort Dropdown */}
+        <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
+          <div className="relative w-full sm:w-auto">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className="flex items-center justify-between sm:justify-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-md shadow-md hover:bg-gray-800 transition duration-300 w-full sm:w-auto text-sm sm:text-base"
+            >
+              Sort <ChevronDown size={16} className="sm:size-18" />
+            </button>
 
-    {showSortDropdown && (
-      <div className="absolute right-0 mt-2 w-full sm:w-48 bg-gray-800 text-white rounded-lg shadow-lg z-10 animate-fade-in">
-        <button
-          onClick={() => {
-            setSortBy("date");
-            setShowSortDropdown(false);
-          }}
-          className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
-        >
-          <Calendar size={16} /> Sort by Date
-        </button>
-        <button
-          onClick={() => {
-            setSortBy("priority");
-            setShowSortDropdown(false);
-          }}
-          className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
-        >
-          <Flag size={16} /> Sort by Priority
-        </button>
-      </div>
-    )}
-  </div>
-</div>
-
-
-
-
+            {showSortDropdown && (
+              <div className="absolute right-0 mt-2 w-full sm:w-48 bg-gray-800 text-white rounded-lg shadow-lg z-10 animate-fade-in">
+                <button
+                  onClick={() => {
+                    setSortBy("date");
+                    setShowSortDropdown(false);
+                  }}
+                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+                >
+                  <Calendar size={16} /> Sort by Date
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy("priority");
+                    setShowSortDropdown(false);
+                  }}
+                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+                >
+                  <Flag size={16} /> Sort by Priority
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Pending Cases Section */}
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Pending Cases ({firs.filter((f) => f.status === "Pending").length})
+              Pending Cases ({firs.filter((f) => f.status === "Pending").length}
+              )
             </h2>
             {loading ? (
               <div className="flex justify-center">
@@ -342,7 +349,8 @@ const FIRSubmission = () => {
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Rejected Cases ({firs.filter((f) => f.status === "Rejected").length})
+              Rejected Cases (
+              {firs.filter((f) => f.status === "Rejected").length})
             </h2>
             {loading ? (
               <div className="flex justify-center">
@@ -434,7 +442,9 @@ const FIRSubmission = () => {
             <h2 className="text-2xl font-bold mb-6">FIR Details</h2>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Complainant Information</h3>
+              <h3 className="text-xl font-semibold mb-4">
+                Complainant Information
+              </h3>
               <p>
                 <strong>Name:</strong> {selectedFIR.complainantName}
               </p>
@@ -478,7 +488,9 @@ const FIRSubmission = () => {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Suspect Information</h3>
+              <h3 className="text-xl font-semibold mb-4">
+                Suspect Information
+              </h3>
               <p>
                 <strong>Name:</strong> {selectedFIR.suspectDetails.name}
               </p>
@@ -493,7 +505,9 @@ const FIRSubmission = () => {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Witness Information</h3>
+              <h3 className="text-xl font-semibold mb-4">
+                Witness Information
+              </h3>
               <p>
                 <strong>Name:</strong> {selectedFIR.witnessDetails.name}
               </p>
@@ -503,7 +517,9 @@ const FIRSubmission = () => {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Supporting Documents</h3>
+              <h3 className="text-xl font-semibold mb-4">
+                Supporting Documents
+              </h3>
               <div className="space-y-2">
                 {selectedFIR.supportingDocuments.map((url, index) => (
                   <div key={index} className="text-blue-600">
