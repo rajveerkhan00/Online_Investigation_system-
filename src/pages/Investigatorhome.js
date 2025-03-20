@@ -321,7 +321,7 @@ const FIRSubmission = () => {
 
         <div className="mt-12">
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
               Pending Cases ({firs.filter((f) => f.status === "Pending").length})
             </h2>
             {loading ? (
@@ -336,7 +336,7 @@ const FIRSubmission = () => {
           </div>
 
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
               Active Cases ({firs.filter((f) => f.status === "Active").length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -345,7 +345,7 @@ const FIRSubmission = () => {
           </div>
 
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
               Closed Cases ({firs.filter((f) => f.status === "Solved").length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -354,7 +354,7 @@ const FIRSubmission = () => {
           </div>
 
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
               Rejected Cases ({firs.filter((f) => f.status === "Rejected").length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
