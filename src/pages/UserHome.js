@@ -264,16 +264,17 @@ const FIRSubmission = () => {
         </h1>
 
 {/* Sort Dropdown */}
-<div className="flex justify-end mb-6 px-4 md:px-6">
-  <div className="relative">
+<div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
+  <div className="relative w-full sm:w-auto">
     <button
       onClick={() => setShowSortDropdown(!showSortDropdown)}
-      className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-gray-800 transition duration-300 w-full md:w-auto"
+      className="flex items-center justify-between sm:justify-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-md shadow-md hover:bg-gray-800 transition duration-300 w-full sm:w-auto text-sm sm:text-base"
     >
-      Sort By <ChevronDown size={18} />
+      Sort <ChevronDown size={16} className="sm:size-18" />
     </button>
+
     {showSortDropdown && (
-      <div className="absolute right-0 mt-2 w-48 bg-gray-800 text-white rounded-lg shadow-lg z-10 animate-fade-in">
+      <div className="absolute right-0 mt-2 w-full sm:w-48 bg-gray-800 text-white rounded-lg shadow-lg z-10 animate-fade-in">
         <button
           onClick={() => {
             setSortBy("date");
@@ -281,7 +282,7 @@ const FIRSubmission = () => {
           }}
           className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
         >
-          <Calendar size={18} /> Sort by Date
+          <Calendar size={16} /> Sort by Date
         </button>
         <button
           onClick={() => {
@@ -290,12 +291,13 @@ const FIRSubmission = () => {
           }}
           className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
         >
-          <Flag size={18} /> Sort by Priority
+          <Flag size={16} /> Sort by Priority
         </button>
       </div>
     )}
   </div>
 </div>
+
 
 
 
