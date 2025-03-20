@@ -4,11 +4,12 @@ import "react-toastify/dist/ReactToastify.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-import { db , auth } from "../firebase"; // Import Firebase configurations
-import { collection, getDocs, doc, updateDoc, setDoc } from "firebase/firestore";
+import { db, auth } from "../firebase"; // Import Firebase configurations
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
-import { query, where } from "firebase/firestore";
 import Chatbot from "../components/Chatbot";
+import { ChevronDown, Calendar, Flag } from "lucide-react";
+
 
 const investigationSteps = [
   {
@@ -86,20 +87,19 @@ const FIRSubmission = () => {
   const [activeCaseId, setActiveCaseId] = useState(null);
   const [investigationData, setInvestigationData] = useState({});
   const [showTrackInvestigation, setShowTrackInvestigation] = useState(false);
+  const [sortBy, setSortBy] = useState("date"); // Default sort by date
+  const [showSortDropdown, setShowSortDropdown] = useState(false); // State to manage dropdown visibility
 
   // Fetch all FIRs from Firestore
   useEffect(() => {
     const fetchFirs = async () => {
-      // Wait for Firebase to initialize and check if a user is logged in
       auth.onAuthStateChanged(async (user) => {
         if (!user) {
-          // If no user is logged in, stop loading and return
           setLoading(false);
           return;
         }
 
         try {
-          // Fetch FIRs for the logged-in user
           const q = query(collection(db, "firs"), where("userId", "==", user.uid));
           const querySnapshot = await getDocs(q);
           const firData = querySnapshot.docs.map((doc) => ({
@@ -118,6 +118,7 @@ const FIRSubmission = () => {
 
     fetchFirs();
   }, []);
+
   // Fetch investigation data for a specific FIR
   useEffect(() => {
     if (activeCaseId) {
@@ -187,55 +188,67 @@ const FIRSubmission = () => {
     }
   };
 
+  // Sort FIRs based on selected criteria
+  const sortFirs = (firs, sortBy) => {
+    if (sortBy === "date") {
+      return [...firs].sort((a, b) => new Date(b.incidentDateTime) - new Date(a.incidentDateTime));
+    } else if (sortBy === "priority") {
+      const priorityOrder = { "Murder": 1, "Theft": 2, "Fraud": 3, "Other": 4 };
+      return [...firs].sort((a, b) => priorityOrder[a.incidentType] - priorityOrder[b.incidentType]);
+    }
+    return firs;
+  };
+
   // Render FIRs by status
   const renderFIRsByStatus = (status) => {
-    return firs
-      .filter((fir) => fir.status === status)
-      .map((fir) => (
-        <div key={fir.id} className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-lg font-semibold">{fir.complainantName}</h3>
-              <p className="text-sm text-gray-600">{fir.incidentType}</p>
-            </div>
-            <span
-              className={`px-3 py-1 rounded-full text-sm ${getStatusColor(fir.status)}`}
-            >
-              {fir.status}
-            </span>
+    const filteredFirs = firs.filter((fir) => fir.status === status);
+    const sortedFirs = sortFirs(filteredFirs, sortBy);
+
+    return sortedFirs.map((fir) => (
+      <div key={fir.id} className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">{fir.complainantName}</h3>
+            <p className="text-sm text-gray-600">{fir.incidentType}</p>
           </div>
-          <p className="text-gray-700 mb-2">
-            {new Date(fir.incidentDateTime).toLocaleString()}
-          </p>
-          <p className="text-gray-600 truncate">{fir.incidentDescription}</p>
-          <div className="mt-4 flex space-x-2">
-            {fir.supportingDocuments.map((url, index) => (
-              <img
-                key={index}
-                src={url}
-                alt={`Document ${index + 1}`}
-                className="w-16 h-16 object-cover rounded"
-              />
-            ))}
-          </div>
-          <div className="flex justify-between items-center mt-4">
-            <button
-              onClick={() => handleViewDetails(fir)}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              View Details
-            </button>
-            {fir.status === "Active" && (
-              <button
-                onClick={() => handleTrackInvestigation(fir.id)}
-                className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
-              >
-                Track Investigation
-              </button>
-            )}
-          </div>
+          <span
+            className={`px-3 py-1 rounded-full text-sm ${getStatusColor(fir.status)}`}
+          >
+            {fir.status}
+          </span>
         </div>
-      ));
+        <p className="text-gray-700 mb-2">
+          {new Date(fir.incidentDateTime).toLocaleString()}
+        </p>
+        <p className="text-gray-600 truncate">{fir.incidentDescription}</p>
+        <div className="mt-4 flex space-x-2">
+          {fir.supportingDocuments.map((url, index) => (
+            <img
+              key={index}
+              src={url}
+              alt={`Document ${index + 1}`}
+              className="w-16 h-16 object-cover rounded"
+            />
+          ))}
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <button
+            onClick={() => handleViewDetails(fir)}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            View Details
+          </button>
+          {fir.status === "Active" && (
+            <button
+              onClick={() => handleTrackInvestigation(fir.id)}
+              className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
+            >
+              Track Investigation
+            </button>
+          )}
+        </div>
+      </div>
+    ));
   };
 
   return (
@@ -243,13 +256,49 @@ const FIRSubmission = () => {
       <Header />
       <Navbar />
       <Chatbot />
-      
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
-      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-  Your All Cases / FIRs
-</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
+          Your All Cases / FIRs
+        </h1>
+
+{/* Sort Dropdown */}
+<div className="flex justify-end mb-6 px-4 md:px-6">
+  <div className="relative">
+    <button
+      onClick={() => setShowSortDropdown(!showSortDropdown)}
+      className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-gray-800 transition duration-300 w-full md:w-auto"
+    >
+      Sort By <ChevronDown size={18} />
+    </button>
+    {showSortDropdown && (
+      <div className="absolute right-0 mt-2 w-48 bg-gray-800 text-white rounded-lg shadow-lg z-10 animate-fade-in">
+        <button
+          onClick={() => {
+            setSortBy("date");
+            setShowSortDropdown(false);
+          }}
+          className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+        >
+          <Calendar size={18} /> Sort by Date
+        </button>
+        <button
+          onClick={() => {
+            setSortBy("priority");
+            setShowSortDropdown(false);
+          }}
+          className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+        >
+          <Flag size={18} /> Sort by Priority
+        </button>
+      </div>
+    )}
+  </div>
+</div>
+
+
+
 
         {/* Pending Cases Section */}
         <div className="mt-12">
