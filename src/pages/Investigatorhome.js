@@ -4,9 +4,10 @@ import "react-toastify/dist/ReactToastify.css";
 import Headeri from "../components/Headeri";
 import Footer from "../components/Footeri";
 import Navbari from "../components/Navbari";
-import { db , auth } from "../firebase"; // Import Firebase configurations
-import { collection, getDocs, doc, updateDoc, setDoc , query, where} from "firebase/firestore";
+import { db, auth } from "../firebase"; // Import Firebase configurations
+import { collection, getDocs, doc, updateDoc, setDoc, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
+import { ChevronDown, Calendar, Flag } from "lucide-react";
 
 const investigationSteps = [
   {
@@ -85,44 +86,44 @@ const FIRSubmission = () => {
   const [activeCaseId, setActiveCaseId] = useState(null);
   const [investigationData, setInvestigationData] = useState({});
   const [saveLoading, setSaveLoading] = useState(false);
+  const [sortBy, setSortBy] = useState("date"); // Default sort by date
+  const [showSortDropdown, setShowSortDropdown] = useState(false); // State to manage dropdown visibility
 
- // Fetch FIRs assigned to the logged-in investigator
-   useEffect(() => {
-     const fetchFirs = async () => {
-       setLoading(true); // Indicate loading state
-       const user = auth.currentUser;
-   
-       if (!user) {
-         toast.error("Please log in to view your cases.");
-         
-         setLoading(false);
-         return;
-       }
-   
-       try {
-         const q = query(
-           collection(db, "firs"),
-           where("assignedInvestigator", "==", user.uid) // Fetch only assigned FIRs
-         );
-   
-         const querySnapshot = await getDocs(q);
-         const firData = querySnapshot.docs.map((doc) => ({
-           id: doc.id,
-           ...doc.data(),
-         }));
-   
-         setFirs(firData);
-       } catch (error) {
-         toast.error("Failed to fetch FIRs");
-         console.error("Error fetching FIRs:", error);
-       } finally {
-         setLoading(false);
-       }
-     };
-   
-     fetchFirs();
-   }, [auth.currentUser]); // Added dependency to refetch if user changes
-   
+  // Fetch FIRs assigned to the logged-in investigator
+  useEffect(() => {
+    const fetchFirs = async () => {
+      setLoading(true); // Indicate loading state
+      const user = auth.currentUser;
+
+      if (!user) {
+        toast.error("Please log in to view your cases.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const q = query(
+          collection(db, "firs"),
+          where("assignedInvestigator", "==", user.uid) // Fetch only assigned FIRs
+        );
+
+        const querySnapshot = await getDocs(q);
+        const firData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setFirs(firData);
+      } catch (error) {
+        toast.error("Failed to fetch FIRs");
+        console.error("Error fetching FIRs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFirs();
+  }, [auth.currentUser]); // Added dependency to refetch if user changes
 
   // Fetch investigation data for a specific FIR
   useEffect(() => {
@@ -245,67 +246,80 @@ const FIRSubmission = () => {
     }
   };
 
+  // Sort FIRs based on the selected criteria
+  const sortFirs = (firs, sortBy) => {
+    return firs.sort((a, b) => {
+      if (sortBy === "date") {
+        return new Date(a.incidentDateTime) - new Date(b.incidentDateTime);
+      } else if (sortBy === "priority") {
+        return a.priority - b.priority;
+      }
+      return 0;
+    });
+  };
+
   // Render FIRs by status
   const renderFIRsByStatus = (status) => {
-    return firs
-      .filter((fir) => fir.status === status)
-      .map((fir) => (
-        <div key={fir.id} className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-lg font-semibold">{fir.complainantName}</h3>
-              <p className="text-sm text-gray-600">{fir.incidentType}</p>
-            </div>
-            <span
-              className={`px-3 py-1 rounded-full text-sm ${getStatusColor(fir.status)}`}
-            >
-              {fir.status}
-            </span>
+    const filteredFirs = firs.filter((fir) => fir.status === status);
+    const sortedFirs = sortFirs(filteredFirs, sortBy);
+
+    return sortedFirs.map((fir) => (
+      <div key={fir.id} className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">{fir.complainantName}</h3>
+            <p className="text-sm text-gray-600">{fir.incidentType}</p>
           </div>
-          <p className="text-gray-700 mb-2">
-            {new Date(fir.incidentDateTime).toLocaleString()}
-          </p>
-          <p className="text-gray-600 truncate">{fir.incidentDescription}</p>
-          <div className="mt-4 flex space-x-2">
-            {fir.supportingDocuments.map((url, index) => (
-              <img
-                key={index}
-                src={url}
-                alt={`Document ${index + 1}`}
-                className="w-16 h-16 object-cover rounded"
-              />
-            ))}
-          </div>
-          <div className="flex justify-between items-center mt-4">
-            <button
-              onClick={() => handleViewDetails(fir)}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              View Details
-            </button>
-            {fir.status === "Active" && (
-              <button
-                onClick={() => handleStartSolvingCase(fir.id)}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-              >
-                Start Solving Case
-              </button>
-            )}
-          </div>
-          <div className="mt-4">
-            <select
-              value={fir.status}
-              onChange={(e) => handleChangeStatus(fir.id, e.target.value)}
-              className="p-2 border rounded"
-            >
-              <option value="Pending">Pending</option>
-              <option value="Active">Active</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Solved">Solved</option>
-            </select>
-          </div>
+          <span
+            className={`px-3 py-1 rounded-full text-sm ${getStatusColor(fir.status)}`}
+          >
+            {fir.status}
+          </span>
         </div>
-      ));
+        <p className="text-gray-700 mb-2">
+          {new Date(fir.incidentDateTime).toLocaleString()}
+        </p>
+        <p className="text-gray-600 truncate">{fir.incidentDescription}</p>
+        <div className="mt-4 flex space-x-2">
+          {fir.supportingDocuments.map((url, index) => (
+            <img
+              key={index}
+              src={url}
+              alt={`Document ${index + 1}`}
+              className="w-16 h-16 object-cover rounded"
+            />
+          ))}
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <button
+            onClick={() => handleViewDetails(fir)}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            View Details
+          </button>
+          {fir.status === "Active" && (
+            <button
+              onClick={() => handleStartSolvingCase(fir.id)}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            >
+              Start Solving Case
+            </button>
+          )}
+        </div>
+        <div className="mt-4">
+          <select
+            value={fir.status}
+            onChange={(e) => handleChangeStatus(fir.id, e.target.value)}
+            className="p-2 border rounded"
+          >
+            <option value="Pending">Pending</option>
+            <option value="Active">Active</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Solved">Solved</option>
+          </select>
+        </div>
+      </div>
+    ));
   };
 
   return (
@@ -318,7 +332,40 @@ const FIRSubmission = () => {
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
           FIR Cases Management System
         </h1>
+        {/* Sort Dropdown */}
+        <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
+          <div className="relative w-40 sm:w-20">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className="flex items-center justify-between sm:justify-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-md shadow-md hover:bg-gray-800 transition duration-300 w-full sm:w-auto text-xs sm:text-base"
+            >
+              Sort <ChevronDown size={10} className="sm:size-18" />
+            </button>
 
+            {showSortDropdown && (
+              <div className="absolute right-0 mt-2 w-full sm:w-48 bg-gray-800 text-white rounded-lg shadow-lg z-10 animate-fade-in">
+                <button
+                  onClick={() => {
+                    setSortBy("date");
+                    setShowSortDropdown(false);
+                  }}
+                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+                >
+                  <Calendar size={16} /> Sort by Date
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy("priority");
+                    setShowSortDropdown(false);
+                  }}
+                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+                >
+                  <Flag size={16} /> Sort by Priority
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
