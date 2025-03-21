@@ -6,6 +6,22 @@ import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { db } from "../firebase"; // Import Firebase Firestore
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs } from "firebase/firestore";
+import { AdvancedImage } from "@cloudinary/react";
+import { Cloudinary } from "@cloudinary/url-gen";
+import { auto } from "@cloudinary/url-gen/actions/resize";
+import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
+
+// Initialize Cloudinary
+const cld = new Cloudinary({ cloud: { cloudName: "dtv5vzkms" } });
+
+// Function to extract public ID from Cloudinary URL
+const extractPublicId = (url) => {
+    const parts = url.split("/upload/");
+    if (parts.length > 1) {
+        return parts[1].split(".")[0]; // Remove the file extension
+    }
+    return url; // Fallback to the original URL if extraction fails
+};
 
 const Client = () => {
     const [cases, setCases] = useState([]);
@@ -26,6 +42,7 @@ const Client = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentCaseId, setCurrentCaseId] = useState(null);
     const [selectedCase, setSelectedCase] = useState(null);
+    const [uploading, setUploading] = useState(false);
 
     // Fetch cases from Firestore
     useEffect(() => {
@@ -53,6 +70,57 @@ const Client = () => {
         setNewCase((prev) => ({ ...prev, [name]: value }));
     };
 
+    // Handle image upload to Cloudinary
+    const handleImageUpload = async (file) => {
+        if (!file) {
+            toast.error("No file selected.");
+            return "";
+        }
+
+        // Validate file type and size
+        const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error("Invalid file type. Only JPEG, PNG, and GIF are allowed.");
+            return "";
+        }
+
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            toast.error("File size too large. Maximum size is 5MB.");
+            return "";
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "my_preset"); // Use your Cloudinary upload preset here
+
+        try {
+            setUploading(true);
+            const response = await fetch(
+                `https://api.cloudinary.com/v1_1/dtv5vzkms/image/upload`, // Replace with your Cloudinary cloud name
+                {
+                    method: "POST",
+                    body: formData,
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("Failed to upload image: " + response.statusText);
+            }
+
+            const data = await response.json();
+            if (data.secure_url) {
+                return data.secure_url;
+            } else {
+                throw new Error("No URL returned from Cloudinary.");
+            }
+        } catch (error) {
+            toast.error("Failed to upload image: " + error.message);
+            return "";
+        } finally {
+            setUploading(false);
+        }
+    };
+
     // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -64,17 +132,23 @@ const Client = () => {
             return;
         }
 
+        // Ensure picUrl is not undefined
+        if (!newCase.picUrl) {
+            toast.error("Main image is required.");
+            return;
+        }
+
         try {
             const caseData = {
                 name: newCase.name,
                 type: caseType,
-                picUrl: newCase.picUrl,
-                img1: newCase.img1,
-                img2: newCase.img2,
-                img3: newCase.img3,
+                picUrl: newCase.picUrl || "", // Ensure picUrl is not undefined
+                img1: newCase.img1 || "", // Ensure img1 is not undefined
+                img2: newCase.img2 || "", // Ensure img2 is not undefined
+                img3: newCase.img3 || "", // Ensure img3 is not undefined
                 description: newCase.description,
-                description1: newCase.description1,
-                description2: newCase.description2,
+                description1: newCase.description1 || "", // Ensure description1 is not undefined
+                description2: newCase.description2 || "", // Ensure description2 is not undefined
             };
 
             if (isEditing) {
@@ -196,32 +270,28 @@ const Client = () => {
                         <div className="bg-white p-6 rounded-lg shadow-lg">
                             <h2 className="text-2xl font-bold mb-2">{selectedCase.name}</h2>
                             <h3 className="text-gray-500 text-sm mb-4">{selectedCase.type}</h3>
-                            <img
-                                alt={selectedCase.name}
+                            <AdvancedImage
+                                cldImg={cld.image(extractPublicId(selectedCase.picUrl)).resize(auto().gravity(autoGravity()).width(500).height(500))}
                                 className="w-full h-64 object-cover object-center rounded-lg mb-4"
-                                src={selectedCase.picUrl}
                             />
                             <p className="mb-4">{selectedCase.description}</p>
                             <div className="grid grid-cols-3 gap-4 mb-4">
                                 {selectedCase.img1 && (
-                                    <img
-                                        alt="Image 1"
+                                    <AdvancedImage
+                                        cldImg={cld.image(extractPublicId(selectedCase.img1)).resize(auto().gravity(autoGravity()).width(200).height(200))}
                                         className="w-full h-32 object-cover object-center rounded-lg"
-                                        src={selectedCase.img1}
                                     />
                                 )}
                                 {selectedCase.img2 && (
-                                    <img
-                                        alt="Image 2"
+                                    <AdvancedImage
+                                        cldImg={cld.image(extractPublicId(selectedCase.img2)).resize(auto().gravity(autoGravity()).width(200).height(200))}
                                         className="w-full h-32 object-cover object-center rounded-lg"
-                                        src={selectedCase.img2}
                                     />
                                 )}
                                 {selectedCase.img3 && (
-                                    <img
-                                        alt="Image 3"
+                                    <AdvancedImage
+                                        cldImg={cld.image(extractPublicId(selectedCase.img3)).resize(auto().gravity(autoGravity()).width(200).height(200))}
                                         className="w-full h-32 object-cover object-center rounded-lg"
-                                        src={selectedCase.img3}
                                     />
                                 )}
                             </div>
@@ -242,10 +312,9 @@ const Client = () => {
                                         onClick={() => handleCaseClick(item)}
                                     >
                                         <a className="block relative h-48 rounded overflow-hidden">
-                                            <img
-                                                alt={item.name}
+                                            <AdvancedImage
+                                                cldImg={cld.image(extractPublicId(item.picUrl)).resize(auto().gravity(autoGravity()).width(300).height(200))}
                                                 className="object-cover object-center w-full h-full block"
-                                                src={item.picUrl}
                                             />
                                         </a>
                                         <div className="mt-4">
@@ -334,36 +403,52 @@ const Client = () => {
                             />
                         )}
                         <input
-                            type="text"
+                            type="file"
                             name="picUrl"
-                            value={newCase.picUrl}
-                            onChange={handleChange}
-                            placeholder="Enter main image URL"
+                            onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const url = await handleImageUpload(file);
+                                    setNewCase((prev) => ({ ...prev, picUrl: url }));
+                                }
+                            }}
                             required
                             className="w-full px-3 py-2 border rounded-lg"
                         />
                         <input
-                            type="text"
+                            type="file"
                             name="img1"
-                            value={newCase.img1}
-                            onChange={handleChange}
-                            placeholder="Enter image 1 URL"
+                            onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const url = await handleImageUpload(file);
+                                    setNewCase((prev) => ({ ...prev, img1: url }));
+                                }
+                            }}
                             className="w-full px-3 py-2 border rounded-lg"
                         />
                         <input
-                            type="text"
+                            type="file"
                             name="img2"
-                            value={newCase.img2}
-                            onChange={handleChange}
-                            placeholder="Enter image 2 URL"
+                            onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const url = await handleImageUpload(file);
+                                    setNewCase((prev) => ({ ...prev, img2: url }));
+                                }
+                            }}
                             className="w-full px-3 py-2 border rounded-lg"
                         />
                         <input
-                            type="text"
+                            type="file"
                             name="img3"
-                            value={newCase.img3}
-                            onChange={handleChange}
-                            placeholder="Enter image 3 URL"
+                            onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const url = await handleImageUpload(file);
+                                    setNewCase((prev) => ({ ...prev, img3: url }));
+                                }
+                            }}
                             className="w-full px-3 py-2 border rounded-lg"
                         />
                         <textarea
