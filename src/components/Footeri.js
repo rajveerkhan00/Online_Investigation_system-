@@ -1,72 +1,91 @@
-import React from 'react';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; 
+import { auth } from "../firebase"; 
+import { toast } from "react-toastify"; 
+import "react-toastify/dist/ReactToastify.css";
 
 const Footer = () => {
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false); // Ensures auth is checked at least once
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setCurrentUser(user);
+      setAuthChecked(true); // Mark that authentication has been checked
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleNavigation = (event, path) => {
+    event.preventDefault(); // Stops the default navigation
+
+    if (!authChecked) {
+      // If auth state is not yet confirmed, wait a little
+      setTimeout(() => {
+        checkAndNavigate(path);
+      }, 100);
+    } else {
+      checkAndNavigate(path);
+    }
+  };
+
+  const checkAndNavigate = (path) => {
+    const user = auth.currentUser; // Ensures real-time auth state
+    if (!user) {
+      toast.error("Please login/signup to proceed!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: true,
+        theme: "colored",
+      });
+    } else {
+      navigate(path);
+    }
+  };
+
   return (
-    <footer className="bg-gray-500 py-8 px-4 text-white">
+    <footer className="bg-gray-200 py-8 px-4 text-gray-700 mt-10">
       <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
-        {/* Brand and Description */}
         <div className="mb-4 md:mb-0 text-center md:text-left">
           <h3 className="text-xl font-bold">The Investigation System</h3>
           <p className="text-sm">Report anything here</p>
         </div>
 
-        {/* Social Media Links */}
         <div className="flex space-x-6 mb-4 md:mb-0">
-          <a href="#" className="hover:text-gray-300 transition-colors duration-300">
-            <i className="fab fa-facebook-f fa-lg"></i>
-          </a>
-          <a href="#" className="hover:text-gray-300 transition-colors duration-300">
-            <i className="fab fa-twitter fa-lg"></i>
-          </a>
-          <a href="#" className="hover:text-gray-300 transition-colors duration-300">
-            <i className="fab fa-linkedin-in fa-lg"></i>
-          </a>
-          <a href="#" className="hover:text-gray-300 transition-colors duration-300">
-            <i className="fab fa-instagram fa-lg"></i>
-          </a>
+          {["facebook-f", "twitter", "linkedin-in", "instagram"].map((icon, index) => (
+            <button key={index} className="hover:text-gray-600 transition-colors duration-300">
+              <i className={`fab fa-${icon} fa-lg`}></i>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Navigation Links */}
       <div className="container mx-auto flex flex-wrap justify-center md:justify-start mt-8">
-        {/* Section 1 */}
-        <div className="lg:w-1/4 md:w-1/2 w-full px-4 mb-4 md:mb-0 text-center md:text-left">
-          <h2 className="font-medium tracking-widest text-sm mb-3">OUR WEBSITE</h2>
-          <ul className="list-none">
-            <li>
-              <a href="index.html" className="hover:text-gray-300">HOME</a>
-            </li>
-            <li>
-              <a href="aboutus.html" className="hover:text-gray-300">ABOUT US</a>
-            </li>
-          </ul>
-        </div>
-
-        {/* Section 2 */}
-        <div className="lg:w-1/4 md:w-1/2 w-full px-4 mb-4 md:mb-0 text-center md:text-left">
-          <h2 className="font-medium tracking-widest text-sm mb-3">CONTACT</h2>
-          <ul className="list-none">
-            <li>
-              <a href="contactus.html" className="hover:text-gray-300">CONTACT US</a>
-            </li>
-            <li>
-              <a href="feedback.html" className="hover:text-gray-300">GIVE FEEDBACK</a>
-            </li>
-          </ul>
-        </div>
-
-        {/* Section 3 */}
-        <div className="lg:w-1/4 md:w-1/2 w-full px-4 mb-4 md:mb-0 text-center md:text-left">
-          <h2 className="font-medium tracking-widest text-sm mb-3">MAJOR</h2>
-          <ul className="list-none">
-            <li>
-              <a href="index.html" className="hover:text-gray-300">OUR DUCTS</a>
-            </li>
-            <li>
-              <a href="index.html" className="hover:text-gray-300">MAJOR DUCTS</a>
-            </li>
-          </ul>
-        </div>
+        {[
+          { title: "OUR WEBSITE", links: [{ name: "HOME", path: "/User/Home" }, { name: "ABOUT US", path: "/About" }] },
+          { title: "CONTACT", links: [{ name: "CONTACT US", path: "/User/Contact" }, { name: "GIVE FEEDBACK", path: "/User/Feedback" }] },
+          { title: "MAJOR", links: [{ name: "OUR DUCTS", path: "/major-ducts" }, { name: "MAJOR DUCTS", path: "/major-ducts" }] }
+        ].map((section, idx) => (
+          <div key={idx} className="lg:w-1/4 md:w-1/2 w-full px-4 mb-4 md:mb-0 text-center md:text-left">
+            <h2 className="font-medium tracking-widest text-sm mb-3">{section.title}</h2>
+            <ul className="list-none">
+              {section.links.map((link, index) => (
+                <li key={index}>
+                  <button 
+                    onClick={(e) => handleNavigation(e, link.path)} 
+                    className="hover:text-gray-600"
+                  >
+                    {link.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </footer>
   );

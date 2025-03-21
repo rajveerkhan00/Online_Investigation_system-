@@ -5,7 +5,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc } from "firebase/firestore";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Footer from "../components/Footer";
+import Footer from "../components/Footeri";
 import HeaderSL from "../components/HeaderSL";
 
 const InvestigatorSignup = () => {

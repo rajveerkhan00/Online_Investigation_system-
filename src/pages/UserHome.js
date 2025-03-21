@@ -263,15 +263,14 @@ const FIRSubmission = () => {
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
           Your All Cases / FIRs
         </h1>
-
-       {/* Sort Dropdown */}
+{/* Sort Dropdown */}
 <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
-  <div className="relative w-full sm:w-auto">
+  <div className="relative w-40 sm:w-20">
     <button
       onClick={() => setShowSortDropdown(!showSortDropdown)}
-      className="flex items-center justify-between sm:justify-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-md shadow-md hover:bg-gray-800 transition duration-300 w-full sm:w-auto text-sm sm:text-base"
+      className="flex items-center justify-between sm:justify-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-md shadow-md hover:bg-gray-800 transition duration-300 w-full sm:w-auto text-xs sm:text-base"
     >
-      Sort <ChevronDown size={16} className="sm:size-18" />
+      Sort <ChevronDown size={10} className="sm:size-18" />
     </button>
 
     {showSortDropdown && (
@@ -281,7 +280,7 @@ const FIRSubmission = () => {
             setSortBy("date");
             setShowSortDropdown(false);
           }}
-          className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+          className="flex items-center gap-2 w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
         >
           <Calendar size={16} /> Sort by Date
         </button>
@@ -290,7 +289,7 @@ const FIRSubmission = () => {
             setSortBy("priority");
             setShowSortDropdown(false);
           }}
-          className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+          className="flex items-center gap-2 w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
         >
           <Flag size={16} /> Sort by Priority
         </button>
@@ -298,6 +297,8 @@ const FIRSubmission = () => {
     )}
   </div>
 </div>
+
+
 
 
         {/* Pending Cases Section */}

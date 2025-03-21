@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Headeri from "../components/Headeri";
-import Footer from "../components/Footer";
+import Footer from "../components/Footeri";
 import Navbari from "../components/Navbari";
 import { db , auth } from "../firebase"; // Import Firebase configurations
 import { collection, getDocs, doc, updateDoc, setDoc , query, where} from "firebase/firestore";
