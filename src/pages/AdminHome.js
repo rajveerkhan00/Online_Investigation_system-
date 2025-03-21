@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Header from "../components/HeaderA"
 import { db } from "../firebase"; // Import Firebase Firestore
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { AdvancedImage } from "@cloudinary/react";
@@ -240,7 +238,6 @@ const Client = () => {
     return (
         <div>
             <Header />
-            <Navbar />
             <ToastContainer
                 position="top-right"
                 autoClose={3000}
@@ -509,7 +506,6 @@ const Client = () => {
                 {showForm ? "-" : "+"}
             </button>
 
-            <Footer />
         </div>
     );
 };

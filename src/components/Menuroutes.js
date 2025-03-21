@@ -26,8 +26,8 @@ import Feedback from '../pages/UserFeedback';
 import Contact from '../pages/UserContact';
 import About from '../pages/about';
 import ImageTester from '../pages/image';
+import Dashboard from '../pages/AdminDashboard';
 
-// import Mycases from '../pages/mycases';
 // import Completecases from '../pages/completecases';
 // import CurrnetCase from '../pages/currentcase';
 
@@ -62,9 +62,9 @@ export default function Menuroutes() {
           <Route path="/User/Contact" element={<Contact />} />
           <Route path="/About" element={<About />} /> 
           <Route path="/Image" element={<ImageTester />} />
+          <Route path="/Admin/Dashboard" element={<Dashboard />} />
           
           {/* 
-          <Route path="/Currentcase" element={<CurrnetCase />} />
           <Route path="/Completecases" element={<Completecases />} />
           <Route path="/Mycases" element={<Mycases />} />
          */}

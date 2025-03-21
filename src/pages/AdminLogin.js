@@ -29,7 +29,7 @@ function AdminLogin() {
         if (userData.role === "admin") {
           localStorage.setItem("adminId", user.uid);
           toast.success("✅ Login successful!", { autoClose: 3000 });
-          setTimeout(() => navigate("/Admin/Home"), 1000);
+          setTimeout(() => navigate("/Admin/Dashboard"), 1000);
         } else {
           toast.error("⚠️ Access denied. Not an admin.", { autoClose: 3000 });
         }
