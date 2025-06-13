@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from 'react-router-dom';
-
+import { FileWarning } from "lucide-react";
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -55,6 +55,24 @@ function Header() {
     </svg>
     <Link to="/User/Fir" className="font-bold text-sm">New FIR</Link>
   </button>
+{/* Chat Button */}
+<button className="flex items-center space-x-1 text-red-600 font-semibold hover:text-red-500 transition focus:ring-2 focus:ring-red-300 focus:ring-offset-2 p-2 rounded-md">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-5 w-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4.29-.98l-4.71 1.18 1.18-4.71A9.77 9.77 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+    />
+  </svg>
+  <Link to="/User/Chat" className="font-bold text-sm">Chat</Link>
+</button>
 
   {/* Pending Cases Button */}
   <button className="flex items-center space-x-1 text-gray-800 font-semibold hover:text-gray-600 transition focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 p-2 rounded-md">
@@ -97,6 +115,11 @@ function Header() {
     </svg>
     <Link to="/User/Solved/Fir" className="font-bold text-sm">Solved Cases</Link>
   </button>
+ {/* UnSolved Cases Button */}
+<button className="flex items-center space-x-1 text-gray-800 font-semibold hover:text-gray-600 transition focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 p-2 rounded-md">
+  <FileWarning className="h-5 w-5" />
+  <Link to="/User/UnSolved/Fir" className="font-bold text-sm">UnSolved Cases</Link>
+</button>
 
   {/* Rejected Cases Button */}
   <button className="flex items-center space-x-1 text-gray-800 font-semibold hover:text-gray-600 transition focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 p-2 rounded-md">

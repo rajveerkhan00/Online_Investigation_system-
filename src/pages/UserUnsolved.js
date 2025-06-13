@@ -290,7 +290,7 @@ const FIRSubmission = () => {
 
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-          Solved Cases / FIRs
+          UnSolved Cases / FIRs
         </h1>
         
         <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
@@ -326,10 +326,12 @@ const FIRSubmission = () => {
             )}
           </div>
         </div>
+
+
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Solved Cases ({firs.filter((f) => f.status === "Solved").length})
+              UnSolved Cases ({firs.filter((f) => f.status === "UnSolved").length})
             </h2>
             {loading ? (
               <div className="flex justify-center">
@@ -337,11 +339,12 @@ const FIRSubmission = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {renderFIRsByStatus("Solved")}
+                {renderFIRsByStatus("UnSolved")}
               </div>
             )}
           </div>
         </div>
+
       </main>
 
       {showTrackInvestigation && (

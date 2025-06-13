@@ -4,10 +4,11 @@ import "react-toastify/dist/ReactToastify.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-import { db, auth } from "../firebase"; // Import Firebase configurations
+import { db, auth } from "../firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
 import Chatbot from "../components/Chatbot";
+import UserChat from "../components/ChatUI";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
 
 const investigationSteps = [
@@ -86,10 +87,9 @@ const FIRSubmission = () => {
   const [activeCaseId, setActiveCaseId] = useState(null);
   const [investigationData, setInvestigationData] = useState({});
   const [showTrackInvestigation, setShowTrackInvestigation] = useState(false);
-  const [sortBy, setSortBy] = useState("date"); // Default sort by date
-  const [showSortDropdown, setShowSortDropdown] = useState(false); // State to manage dropdown visibility
+  const [sortBy, setSortBy] = useState("date");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
 
-  // Fetch all FIRs from Firestore
   useEffect(() => {
     const fetchFirs = async () => {
       auth.onAuthStateChanged(async (user) => {
@@ -121,7 +121,6 @@ const FIRSubmission = () => {
     fetchFirs();
   }, []);
 
-  // Fetch investigation data for a specific FIR
   useEffect(() => {
     if (activeCaseId) {
       const fetchInvestigationData = async () => {
@@ -135,7 +134,7 @@ const FIRSubmission = () => {
           if (investigationData) {
             setInvestigationData(investigationData.data().data);
           } else {
-            setInvestigationData({}); // Reset if no data found
+            setInvestigationData({});
           }
         } catch (error) {
           toast.error("Failed to fetch investigation data");
@@ -147,13 +146,11 @@ const FIRSubmission = () => {
     }
   }, [activeCaseId]);
 
-  // Handle "Track Investigation" button click
   const handleTrackInvestigation = (firId) => {
     setActiveCaseId(firId);
     setShowTrackInvestigation(true);
   };
 
-  // Calculate progress
   const calculateProgress = () => {
     let completedSteps = 0;
     investigationSteps.forEach((phase, phaseIndex) => {
@@ -163,22 +160,19 @@ const FIRSubmission = () => {
         }
       });
     });
-    return (completedSteps / 40) * 100; // Total steps are 40
+    return (completedSteps / 40) * 100;
   };
 
-  // Handle view details
   const handleViewDetails = (fir) => {
     setSelectedFIR(fir);
     setShowModal(true);
   };
 
-  // Close modal
   const closeModal = () => {
     setShowModal(false);
     setSelectedFIR(null);
   };
 
-  // Get status color based on FIR status
   const getStatusColor = (status) => {
     switch (status) {
       case "Pending":
@@ -187,6 +181,8 @@ const FIRSubmission = () => {
         return "bg-blue-100 text-blue-800";
       case "Solved":
         return "bg-green-100 text-green-800";
+      case "UnSolved":
+        return "bg-purple-100 text-purple-800";
       case "Rejected":
         return "bg-red-100 text-red-800";
       default:
@@ -194,7 +190,6 @@ const FIRSubmission = () => {
     }
   };
 
-  // Sort FIRs based on selected criteria
   const sortFirs = (firs, sortBy) => {
     if (sortBy === "date") {
       return [...firs].sort(
@@ -209,7 +204,6 @@ const FIRSubmission = () => {
     return firs;
   };
 
-  // Render FIRs by status
   const renderFIRsByStatus = (status) => {
     const filteredFirs = firs.filter((fir) => fir.status === status);
     const sortedFirs = sortFirs(filteredFirs, sortBy);
@@ -243,6 +237,31 @@ const FIRSubmission = () => {
             />
           ))}
         </div>
+
+        {/* Show rejection reason for rejected cases */}
+        {fir.status === "Rejected" && fir.rejectedReason && (
+          <div className="mt-4 p-3 bg-red-50 rounded border border-red-100">
+            <p className="font-semibold text-red-800">Rejection Reason:</p>
+            <p className="text-red-700">{fir.rejectedReason}</p>
+          </div>
+        )}
+
+        {/* Show unsolved reason for unsolved cases */}
+        {fir.status === "UnSolved" && fir.unsolvedReason && (
+          <div className="mt-4 p-3 bg-purple-50 rounded border border-purple-100">
+            <p className="font-semibold text-purple-800">Unsolved Reason:</p>
+            <p className="text-purple-700">{fir.unsolvedReason}</p>
+          </div>
+        )}
+
+        {/* Show reopen reason for reopened cases */}
+        {fir.reopenReason && (
+          <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-100">
+            <p className="font-semibold text-blue-800">Reopen Reason:</p>
+            <p className="text-blue-700">{fir.reopenReason}</p>
+          </div>
+        )}
+
         <div className="flex justify-between items-center mt-4">
           <button
             onClick={() => handleViewDetails(fir)}
@@ -268,13 +287,14 @@ const FIRSubmission = () => {
       <Header />
       <Navbar />
       <Chatbot />
+      <UserChat />
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
           Your All Cases / FIRs
         </h1>
-        {/* Sort Dropdown */}
+        
         <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
           <div className="relative w-40 sm:w-20">
             <button
@@ -308,12 +328,11 @@ const FIRSubmission = () => {
             )}
           </div>
         </div>
-        {/* Pending Cases Section */}
+
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Pending Cases ({firs.filter((f) => f.status === "Pending").length}
-              )
+              Pending Cases ({firs.filter((f) => f.status === "Pending").length})
             </h2>
             {loading ? (
               <div className="flex justify-center">
@@ -327,7 +346,6 @@ const FIRSubmission = () => {
           </div>
         </div>
 
-        {/* Active Cases Section */}
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
@@ -345,26 +363,6 @@ const FIRSubmission = () => {
           </div>
         </div>
 
-        {/* Rejected Cases Section */}
-        <div className="mt-12">
-          <div className="mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Rejected Cases (
-              {firs.filter((f) => f.status === "Rejected").length})
-            </h2>
-            {loading ? (
-              <div className="flex justify-center">
-                <TailSpin color="#6366f1" height={50} width={50} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {renderFIRsByStatus("Rejected")}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Solved Cases Section */}
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
@@ -381,9 +379,42 @@ const FIRSubmission = () => {
             )}
           </div>
         </div>
+
+        <div className="mt-12">
+          <div className="mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
+              UnSolved Cases ({firs.filter((f) => f.status === "UnSolved").length})
+            </h2>
+            {loading ? (
+              <div className="flex justify-center">
+                <TailSpin color="#6366f1" height={50} width={50} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {renderFIRsByStatus("UnSolved")}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-12">
+          <div className="mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
+              Rejected Cases ({firs.filter((f) => f.status === "Rejected").length})
+            </h2>
+            {loading ? (
+              <div className="flex justify-center">
+                <TailSpin color="#6366f1" height={50} width={50} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {renderFIRsByStatus("Rejected")}
+              </div>
+            )}
+          </div>
+        </div>
       </main>
 
-      {/* Track Investigation Modal */}
       {showTrackInvestigation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -435,7 +466,6 @@ const FIRSubmission = () => {
         </div>
       )}
 
-      {/* FIR Details Modal */}
       {showModal && selectedFIR && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -547,3 +577,4 @@ const FIRSubmission = () => {
 };
 
 export default FIRSubmission;
+

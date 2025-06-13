@@ -214,7 +214,7 @@ const CrimeChatbot = () => {
   };
 
   return (    
-  <div className="fixed bottom-5 right-5 z-50">
+  <div className="fixed bottom-1 right-5 z-50">
     {/* Floating Button */}
     <button
       className="bg-gray-600 text-white p-4 rounded-full shadow-lg hover:bg-gray-700 transition"

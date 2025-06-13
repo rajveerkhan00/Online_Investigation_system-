@@ -4,10 +4,25 @@ import "react-toastify/dist/ReactToastify.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-import { db, storage, auth } from "../firebase"; // Import Firebase configurations
+import { db, auth } from "../firebase";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Chatbot from "../components/Chatbot";
+import { AdvancedImage } from "@cloudinary/react";
+import { Cloudinary } from "@cloudinary/url-gen";
+import { auto } from "@cloudinary/url-gen/actions/resize";
+import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
+
+// Initialize Cloudinary
+const cld = new Cloudinary({ cloud: { cloudName: "dtv5vzkms" } });
+
+// Function to extract public ID from Cloudinary URL
+const extractPublicId = (url) => {
+  const parts = url.split("/upload/");
+  if (parts.length > 1) {
+    return parts[1].split(".")[0];
+  }
+  return url;
+};
 
 const FIRSubmission = () => {
   const [firs, setFirs] = useState([]);
@@ -35,16 +50,19 @@ const FIRSubmission = () => {
     },
     incidentDescription: "",
     supportingDocuments: [],
+    idCardFront: "",
+    idCardBack: "",
     status: "Pending",
     termsAgreed: false,
-    userId: "", // Add userId to associate FIR with the user
-    assignedInvestigator: "", // Add assignedInvestigator field
+    userId: "",
+    assignedInvestigator: "",
   });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [investigators, setInvestigators] = useState([]); // List of investigators
-  const [selectedInvestigator, setSelectedInvestigator] = useState(null); // Selected investigator
-  const [investigatorSpace, setInvestigatorSpace] = useState(null); // Space availability for the selected investigator
+  const [investigators, setInvestigators] = useState([]);
+  const [selectedInvestigator, setSelectedInvestigator] = useState(null);
+  const [investigatorSpace, setInvestigatorSpace] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   // Fetch FIRs for the logged-in user
   useEffect(() => {
@@ -92,7 +110,7 @@ const FIRSubmission = () => {
     fetchInvestigators();
   }, []);
 
-  // Check if the selected investigator has space (less than 10 active/pending cases)
+  // Check if the selected investigator has space
   const checkInvestigatorSpace = async (investigatorId) => {
     try {
       const q = query(
@@ -104,9 +122,11 @@ const FIRSubmission = () => {
       const caseCount = querySnapshot.size;
 
       if (caseCount < 10) {
-        setInvestigatorSpace(true); // Green tick
+        setInvestigatorSpace(true);
+        toast.success("Investigator has available space");
       } else {
-        setInvestigatorSpace(false); // Red cross
+        setInvestigatorSpace(false);
+        toast.error("Investigator is at full capacity");
       }
     } catch (error) {
       toast.error("Failed to check investigator space");
@@ -126,26 +146,107 @@ const FIRSubmission = () => {
     }
   };
 
-  // Handle file upload to Firebase Storage
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    const uploadedUrls = [];
+  // Handle image upload to Cloudinary
+  const handleImageUpload = async (file) => {
+    if (!file) {
+      toast.error("No file selected.");
+      return "";
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only JPEG, PNG, and GIF are allowed.");
+      return "";
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size too large. Maximum size is 5MB.");
+      return "";
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "my_preset");
 
     try {
-      for (const file of files) {
-        const storageRef = ref(storage, `documents/${file.name}`);
-        await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(storageRef);
-        uploadedUrls.push(downloadURL);
+      setUploading(true);
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/dtv5vzkms/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to upload image: " + response.statusText);
       }
+
+      const data = await response.json();
+      if (data.secure_url) {
+        return data.secure_url;
+      } else {
+        throw new Error("No URL returned from Cloudinary.");
+      }
+    } catch (error) {
+      toast.error("Failed to upload image: " + error.message);
+      return "";
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle ID card upload
+  const handleIdCardUpload = async (e, side) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const url = await handleImageUpload(file);
+    if (url) {
+      setNewFIR((prev) => ({
+        ...prev,
+        [side === "front" ? "idCardFront" : "idCardBack"]: url,
+      }));
+      toast.success(`${side === "front" ? "Front" : "Back"} ID uploaded successfully!`);
+    }
+  };
+
+  // Handle supporting documents upload
+  const handleSupportingDocsUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    const remainingSlots = 3 - newFIR.supportingDocuments.length;
+    const filesToUpload = files.slice(0, remainingSlots);
+
+    if (filesToUpload.length === 0) {
+      toast.info(`You can only upload ${remainingSlots} more file(s)`);
+      return;
+    }
+
+    const uploadedUrls = [];
+    for (const file of filesToUpload) {
+      const url = await handleImageUpload(file);
+      if (url) {
+        uploadedUrls.push(url);
+      }
+    }
+
+    if (uploadedUrls.length > 0) {
       setNewFIR((prev) => ({
         ...prev,
         supportingDocuments: [...prev.supportingDocuments, ...uploadedUrls],
       }));
-      toast.success("Files uploaded successfully!");
-    } catch (error) {
-      toast.error("File upload failed");
+      toast.success(`${uploadedUrls.length} file(s) uploaded successfully!`);
     }
+  };
+
+  // Remove a supporting document
+  const removeSupportingDoc = (index) => {
+    setNewFIR((prev) => {
+      const updatedDocs = [...prev.supportingDocuments];
+      updatedDocs.splice(index, 1);
+      return { ...prev, supportingDocuments: updatedDocs };
+    });
+    toast.info("Document removed");
   };
 
   // Submit FIR to Firestore
@@ -160,7 +261,6 @@ const FIRSubmission = () => {
       return;
     }
 
-    // Check if an investigator is selected and has space
     if (!selectedInvestigator || !investigatorSpace) {
       toast.error("Please select an investigator with available space.");
       return;
@@ -174,11 +274,10 @@ const FIRSubmission = () => {
             ? newFIR.customIncidentType
             : newFIR.incidentType,
         timestamp: new Date().toISOString(),
-        userId: user.uid, // Associate FIR with the user's UID
-        assignedInvestigator: selectedInvestigator, // Assign the selected investigator
+        userId: user.uid,
+        assignedInvestigator: selectedInvestigator,
       };
 
-      // Add FIR to Firestore
       const docRef = await addDoc(collection(db, "firs"), firData);
       setFirs((prev) => [...prev, { id: docRef.id, ...firData }]);
       toast.success("FIR submitted successfully!");
@@ -204,12 +303,22 @@ const FIRSubmission = () => {
     }
 
     if (!/^\d{10}$/.test(newFIR.contactNumber)) {
-      toast.error("Invalid contact number");
+      toast.error("Invalid contact number (must be 10 digits)");
+      return false;
+    }
+
+    if (newFIR.email && !/^\S+@\S+\.\S+$/.test(newFIR.email)) {
+      toast.error("Please enter a valid email address");
       return false;
     }
 
     if (!newFIR.termsAgreed) {
       toast.error("You must agree to the terms and conditions");
+      return false;
+    }
+
+    if (!newFIR.idCardFront || !newFIR.idCardBack) {
+      toast.error("Please upload both front and back of your ID card");
       return false;
     }
 
@@ -241,10 +350,12 @@ const FIRSubmission = () => {
       },
       incidentDescription: "",
       supportingDocuments: [],
+      idCardFront: "",
+      idCardBack: "",
       status: "Pending",
       termsAgreed: false,
-      userId: "", // Reset userId
-      assignedInvestigator: "", // Reset assignedInvestigator
+      userId: "",
+      assignedInvestigator: "",
     });
     setShowForm(false);
     setSelectedInvestigator(null);
@@ -260,7 +371,7 @@ const FIRSubmission = () => {
       
       <ToastContainer
         position="top-right"
-        autoClose={3000}
+        autoClose={5000}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick
@@ -321,6 +432,51 @@ const FIRSubmission = () => {
                   placeholder="Email Address"
                   className="p-2 border rounded"
                 />
+              </div>
+            </div>
+
+            {/* ID Card Upload */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold mb-4">ID Card Verification (Required)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2">Front Side of ID Card *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleIdCardUpload(e, "front")}
+                    className="w-full p-2 border rounded"
+                    required
+                    disabled={uploading}
+                  />
+                  {newFIR.idCardFront && (
+                    <div className="mt-2">
+                      <AdvancedImage
+                        cldImg={cld.image(extractPublicId(newFIR.idCardFront)).resize(auto().gravity(autoGravity()).width(300).height(200))}
+                        className="h-32 object-contain border rounded mx-auto"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block mb-2">Back Side of ID Card *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleIdCardUpload(e, "back")}
+                    className="w-full p-2 border rounded"
+                    required
+                    disabled={uploading}
+                  />
+                  {newFIR.idCardBack && (
+                    <div className="mt-2">
+                      <AdvancedImage
+                        cldImg={cld.image(extractPublicId(newFIR.idCardBack)).resize(auto().gravity(autoGravity()).width(300).height(200))}
+                        className="h-32 object-contain border rounded mx-auto"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -435,6 +591,7 @@ const FIRSubmission = () => {
 
             {/* Witness Details */}
             <div className="mb-6">
+              <h3 className="text-xl font-semibold mb-4">Witness Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   name="witnessDetails.name"
@@ -466,40 +623,60 @@ const FIRSubmission = () => {
               />
             </div>
 
-            {/* Document Upload */}
+            {/* Supporting Documents Upload */}
             <div className="mb-6">
-              <label className="block mb-2 font-semibold">
-                Supporting Documents (Photos, Videos, Documents)
-              </label>
-              <input
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-                className="w-full p-2 border rounded"
-                accept=".pdf,.jpg,.jpeg,.png,.mp4"
-              />
-              <div className="mt-2">
-                {newFIR.supportingDocuments.map((url, index) => (
-                  <div key={index} className="text-blue-600 truncate">
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      Document {index + 1}
-                    </a>
+              <h3 className="text-xl font-semibold mb-4">Supporting Evidence (Optional)</h3>
+              <div className="border rounded p-4 bg-gray-50">
+                <label className="block mb-2 font-medium">
+                  Upload Supporting Documents (Max 3 files)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleSupportingDocsUpload}
+                  className="w-full p-2 border rounded"
+                  accept=".jpg,.jpeg,.png"
+                  disabled={newFIR.supportingDocuments.length >= 3 || uploading}
+                />
+                {uploading && <p className="text-blue-600 mt-2">Uploading files, please wait...</p>}
+                <p className="text-sm text-gray-500 mt-2">
+                  {3 - newFIR.supportingDocuments.length} out of 3 slots remaining
+                </p>
+                
+                {newFIR.supportingDocuments.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-medium mb-2">Uploaded Documents:</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {newFIR.supportingDocuments.map((url, index) => (
+                        <div key={index} className="border rounded p-3 bg-white">
+                          <AdvancedImage
+                            cldImg={cld.image(extractPublicId(url)).resize(auto().gravity(autoGravity()).width(200).height(200))}
+                            className="h-32 object-contain mx-auto"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeSupportingDoc(index)}
+                            className="text-red-500 hover:text-red-700 text-sm mt-2 block mx-auto"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             {/* Investigator Selection */}
             <div className="mb-6">
-              <label className="block mb-2 font-semibold">
-                Select Investigator
-              </label>
+              <h3 className="text-xl font-semibold mb-4">Investigator Assignment</h3>
               <div className="flex items-center gap-4">
                 <select
                   value={selectedInvestigator || ""}
                   onChange={(e) => {
                     setSelectedInvestigator(e.target.value);
-                    setInvestigatorSpace(null); // Reset space check
+                    setInvestigatorSpace(null);
                   }}
                   className="p-2 border rounded"
                   required
@@ -514,13 +691,14 @@ const FIRSubmission = () => {
                 <button
                   type="button"
                   onClick={() => checkInvestigatorSpace(selectedInvestigator)}
+                  disabled={!selectedInvestigator || uploading}
                   className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
-                  See Space
+                  Check Availability
                 </button>
                 {investigatorSpace !== null && (
-                  <span className="text-2xl">
-                    {investigatorSpace ? "✅" : "❌"}
+                  <span className={`text-lg font-medium ${investigatorSpace ? 'text-green-600' : 'text-red-600'}`}>
+                    {investigatorSpace ? "Available" : "Full"}
                   </span>
                 )}
               </div>
@@ -554,13 +732,15 @@ const FIRSubmission = () => {
               <button
                 type="submit"
                 className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+                disabled={uploading}
               >
-                Submit FIR
+                {uploading ? "Processing..." : "Submit FIR"}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
                 className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
+                disabled={uploading}
               >
                 Cancel
               </button>

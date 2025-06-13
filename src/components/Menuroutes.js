@@ -21,6 +21,7 @@ import UserRejected from '../pages/UserRejected';
 import UserSolved from '../pages/UserSolved';
 import NewFir from '../pages/NewFir';
 import SolvedFir from '../pages/SolvedFir';
+import UnSolvedFir from '../pages/UserUnsolved';
 import RunningFir from '../pages/RunningFir';
 import Feedback from '../pages/UserFeedback';
 import Contact from '../pages/UserContact';
@@ -28,6 +29,11 @@ import About from '../pages/about';
 import ImageTester from '../pages/image';
 import Dashboard from '../pages/AdminDashboard';
 import BehaviourPredictor from '../pages/BehaviourPredictor';
+import IrejectedFir from '../pages/RejectedFir';
+import IUnsolvedFir from '../pages/UnsolvedFir';
+import UserChat from '../pages/UserChat';
+import InvestigatorChat from '../pages/InvestigatorChat';
+
 
 // import CurrnetCase from '../pages/currentcase';
 
@@ -54,6 +60,7 @@ export default function Menuroutes() {
           <Route path="/User/Pending/Fir" element={<UserPending />} />     
           <Route path="/User/Active/Fir" element={<UserActive />} />     
           <Route path="/User/Solved/Fir" element={<UserSolved />} /> 
+          <Route path="/User/UnSolved/Fir" element={<UnSolvedFir />} /> 
           <Route path="/User/Rejected/Fir" element={<UserRejected />} /> 
           <Route path="/Investigator/PendingFir" element={<NewFir />} />    
           <Route path="/Investigator/SolvedFir" element={<SolvedFir />} />    
@@ -64,6 +71,10 @@ export default function Menuroutes() {
           <Route path="/Image" element={<ImageTester />} />
           <Route path="/Admin/Dashboard" element={<Dashboard />} />
           <Route path="/Investigator/BehaviourPredictor" element={<BehaviourPredictor />} />
+          <Route path="/Investigator/UnSolvedFir" element={<IUnsolvedFir />} />
+          <Route path="/Investigator/RejectedFir" element={<IrejectedFir />} />
+          <Route path="/User/Chat" element={<UserChat />} />
+          <Route path="/Investigator/Chat" element={<InvestigatorChat />} />
           
           {/* 
           <Route path="/Mycases" element={<Mycases />} />

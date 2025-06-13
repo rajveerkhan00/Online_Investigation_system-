@@ -9,7 +9,6 @@ const Navbar = () => {
             <a href="/Investigator/Home" className="text-gray-200 hover:text-gray-300 font-medium text-sm sm:text-base">Home</a>
             <a href="/Contact" className="text-gray-200 hover:text-gray-300 font-medium text-sm sm:text-base">TSC</a>
             <a href="/About" className="text-gray-200 hover:text-gray-300 font-medium text-sm sm:text-base">TFRT</a>
-            <a href="/Investigator/BehaviourPredictor" className="text-red-300 hover:text-red-400 font-medium text-sm sm:text-base">Behaviour Predictor</a>
           </div>
         </div>
       </div>

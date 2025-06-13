@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Headeri from "../components/Headeri";
+import Footer from "../components/Footeri";
+import Navbari from "../components/Navbari";
 import { db, auth } from "../firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, setDoc, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
-import Chatbot from "../components/Chatbot";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
 
 const investigationSteps = [
@@ -83,50 +82,60 @@ const FIRSubmission = () => {
   const [loading, setLoading] = useState(true);
   const [selectedFIR, setSelectedFIR] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showInvestigationForm, setShowInvestigationForm] = useState(false);
   const [activeCaseId, setActiveCaseId] = useState(null);
   const [investigationData, setInvestigationData] = useState({});
-  const [showTrackInvestigation, setShowTrackInvestigation] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [sortBy, setSortBy] = useState("date");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [reasonText, setReasonText] = useState("");
+  const [currentCaseId, setCurrentCaseId] = useState(null);
+  const [currentStatus, setCurrentStatus] = useState("");
+  const [oldStatus, setOldStatus] = useState("");
+  const [showReopenModal, setShowReopenModal] = useState(false);
 
+  // Fetch FIRs assigned to the logged-in investigator
   useEffect(() => {
-    const fetchFirs = async () => {
-      auth.onAuthStateChanged(async (user) => {
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    setLoading(true);
 
-        try {
-          const q = query(
-            collection(db, "firs"),
-            where("userId", "==", user.uid)
-          );
-          const querySnapshot = await getDocs(q);
-          const firData = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setFirs(firData);
-        } catch (error) {
-          toast.error("Failed to fetch FIRs");
-          console.error("Error fetching FIRs:", error);
-        } finally {
-          setLoading(false);
-        }
-      });
-    };
+    if (!user) {
+      toast.error("Please log in to view your cases.");
+      setLoading(false);
+      return;
+    }
 
-    fetchFirs();
-  }, []);
+    try {
+      const q = query(
+        collection(db, "firs"),
+        where("assignedInvestigator", "==", user.uid)
+      );
 
+      const querySnapshot = await getDocs(q);
+      const firData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setFirs(firData);
+    } catch (error) {
+      toast.error("Failed to fetch FIRs");
+      console.error("Error fetching FIRs:", error);
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  return () => unsubscribe(); // Cleanup listener on unmount
+}, []);
+
+  // Fetch investigation data for a specific FIR
   useEffect(() => {
     if (activeCaseId) {
       const fetchInvestigationData = async () => {
         try {
-          const investigationDoc = await getDocs(
-            collection(db, "investigations")
-          );
+          const investigationDoc = await getDocs(collection(db, "investigations"));
           const investigationData = investigationDoc.docs.find(
             (doc) => doc.data().firId === activeCaseId
           );
@@ -145,9 +154,116 @@ const FIRSubmission = () => {
     }
   }, [activeCaseId]);
 
-  const handleTrackInvestigation = (firId) => {
+  const openReasonModal = (firId, newStatus, oldStatus) => {
+    setCurrentCaseId(firId);
+    setCurrentStatus(newStatus);
+    setOldStatus(oldStatus);
+    setShowReasonModal(true);
+    setReasonText("");
+  };
+
+  const openReopenModal = (firId) => {
+    setCurrentCaseId(firId);
+    setShowReopenModal(true);
+    setReasonText("");
+  };
+
+  const saveReason = async () => {
+    if (!reasonText.trim()) {
+      toast.error("Please enter a reason");
+      return;
+    }
+
+    try {
+      const updateData = {
+        status: currentStatus,
+        [`${currentStatus.toLowerCase()}Reason`]: reasonText
+      };
+
+      // Remove old reason if it exists
+      if (oldStatus === "Rejected") {
+        updateData.rejectedReason = null;
+      } else if (oldStatus === "UnSolved") {
+        updateData.unsolvedReason = null;
+      }
+
+      await updateDoc(doc(db, "firs", currentCaseId), updateData);
+
+      setFirs((prev) =>
+        prev.map((f) => {
+          if (f.id === currentCaseId) {
+            const updatedFir = {
+              ...f,
+              status: currentStatus,
+              [`${currentStatus.toLowerCase()}Reason`]: reasonText
+            };
+            // Remove old reason from local state
+            if (oldStatus === "Rejected") {
+              delete updatedFir.rejectedReason;
+            } else if (oldStatus === "UnSolved") {
+              delete updatedFir.unsolvedReason;
+            }
+            return updatedFir;
+          }
+          return f;
+        })
+      );
+
+      toast.success(`Case marked as ${currentStatus} with reason`);
+      setShowReasonModal(false);
+    } catch (error) {
+      toast.error("Failed to update status with reason");
+      console.error("Error updating status:", error);
+    }
+  };
+
+  const handleReopenCase = async () => {
+    if (!reasonText.trim()) {
+      toast.error("Please enter a reason for reopening the case");
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "firs", currentCaseId), {
+        status: "Active",
+        reopenReason: reasonText,
+        unsolvedReason: null // Clear the unsolved reason if it exists
+      });
+
+      setFirs((prev) =>
+        prev.map((f) => {
+          if (f.id === currentCaseId) {
+            const updatedFir = {
+              ...f,
+              status: "Active",
+              reopenReason: reasonText
+            };
+            // Remove unsolved reason from local state
+            delete updatedFir.unsolvedReason;
+            return updatedFir;
+          }
+          return f;
+        })
+      );
+
+      toast.success("Case reopened successfully");
+      setShowReopenModal(false);
+    } catch (error) {
+      toast.error("Failed to reopen case");
+      console.error("Error reopening case:", error);
+    }
+  };
+
+  const handleStartSolvingCase = (firId) => {
     setActiveCaseId(firId);
-    setShowTrackInvestigation(true);
+    setShowInvestigationForm(true);
+  };
+
+  const handleInputChange = (phaseIndex, stepIndex, value) => {
+    const updatedData = { ...investigationData };
+    if (!updatedData[phaseIndex]) updatedData[phaseIndex] = [];
+    updatedData[phaseIndex][stepIndex] = value;
+    setInvestigationData(updatedData);
   };
 
   const calculateProgress = () => {
@@ -160,6 +276,75 @@ const FIRSubmission = () => {
       });
     });
     return (completedSteps / 40) * 100;
+  };
+
+  const handleSaveInvestigation = async () => {
+    setSaveLoading(true);
+    try {
+      await setDoc(doc(db, "investigations", activeCaseId), {
+        firId: activeCaseId,
+        data: investigationData,
+      });
+
+      const progress = calculateProgress();
+      if (progress === 100) {
+        await updateDoc(doc(db, "firs", activeCaseId), { status: "Solved" });
+        setFirs((prev) =>
+          prev.map((f) =>
+            f.id === activeCaseId ? { ...f, status: "Solved" } : f
+          )
+        );
+        toast.success("Case marked as solved successfully");
+      } else {
+        toast.success("Investigation data saved successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to save investigation data");
+      console.error("Error saving investigation data:", error);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleChangeStatus = async (firId, newStatus, oldStatus) => {
+    if (newStatus === "Rejected" || newStatus === "UnSolved") {
+      openReasonModal(firId, newStatus, oldStatus);
+      return;
+    }
+
+    try {
+      const updateData = { status: newStatus };
+      
+      // Remove old reason fields if they exist
+      if (oldStatus === "Rejected") {
+        updateData.rejectedReason = null;
+      } else if (oldStatus === "UnSolved") {
+        updateData.unsolvedReason = null;
+      }
+
+      await updateDoc(doc(db, "firs", firId), updateData);
+      
+      setFirs((prev) =>
+        prev.map((f) => {
+          if (f.id === firId) {
+            const updatedFir = { ...f, status: newStatus };
+            // Remove old reason from local state
+            if (oldStatus === "Rejected") {
+              delete updatedFir.rejectedReason;
+            } else if (oldStatus === "UnSolved") {
+              delete updatedFir.unsolvedReason;
+            }
+            return updatedFir;
+          }
+          return f;
+        })
+      );
+      
+      toast.success("Status updated successfully");
+    } catch (error) {
+      toast.error("Failed to update status");
+      console.error("Error updating status:", error);
+    }
   };
 
   const handleViewDetails = (fir) => {
@@ -190,17 +375,14 @@ const FIRSubmission = () => {
   };
 
   const sortFirs = (firs, sortBy) => {
-    if (sortBy === "date") {
-      return [...firs].sort(
-        (a, b) => new Date(b.incidentDateTime) - new Date(a.incidentDateTime)
-      );
-    } else if (sortBy === "priority") {
-      const priorityOrder = { Murder: 1, Theft: 2, Fraud: 3, Other: 4 };
-      return [...firs].sort(
-        (a, b) => priorityOrder[a.incidentType] - priorityOrder[b.incidentType]
-      );
-    }
-    return firs;
+    return firs.sort((a, b) => {
+      if (sortBy === "date") {
+        return new Date(a.incidentDateTime) - new Date(b.incidentDateTime);
+      } else if (sortBy === "priority") {
+        return a.priority - b.priority;
+      }
+      return 0;
+    });
   };
 
   const renderFIRsByStatus = (status) => {
@@ -215,9 +397,7 @@ const FIRSubmission = () => {
             <p className="text-sm text-gray-600">{fir.incidentType}</p>
           </div>
           <span
-            className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
-              fir.status
-            )}`}
+            className={`px-3 py-1 rounded-full text-sm ${getStatusColor(fir.status)}`}
           >
             {fir.status}
           </span>
@@ -236,31 +416,23 @@ const FIRSubmission = () => {
             />
           ))}
         </div>
-
-        {/* Show rejection reason for rejected cases */}
-        {fir.status === "Rejected" && fir.rejectedReason && (
-          <div className="mt-4 p-3 bg-red-50 rounded border border-red-100">
-            <p className="font-semibold text-red-800">Rejection Reason:</p>
-            <p className="text-red-700">{fir.rejectedReason}</p>
+        
+        {/* Display reason if available */}
+        {(fir.status === "Rejected" || fir.status === "UnSolved") && fir[`${fir.status.toLowerCase()}Reason`] && (
+          <div className="mt-4 p-3 bg-gray-100 rounded">
+            <p className="font-semibold">{fir.status} Reason:</p>
+            <p>{fir[`${fir.status.toLowerCase()}Reason`]}</p>
           </div>
         )}
-
-        {/* Show unsolved reason for unsolved cases */}
-        {fir.status === "UnSolved" && fir.unsolvedReason && (
-          <div className="mt-4 p-3 bg-purple-50 rounded border border-purple-100">
-            <p className="font-semibold text-purple-800">Unsolved Reason:</p>
-            <p className="text-purple-700">{fir.unsolvedReason}</p>
-          </div>
-        )}
-
-        {/* Show reopen reason for reopened cases */}
+        
+        {/* Display reopen reason if available */}
         {fir.reopenReason && (
-          <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-100">
-            <p className="font-semibold text-blue-800">Reopen Reason:</p>
-            <p className="text-blue-700">{fir.reopenReason}</p>
+          <div className="mt-4 p-3 bg-blue-100 rounded">
+            <p className="font-semibold">Reopen Reason:</p>
+            <p>{fir.reopenReason}</p>
           </div>
         )}
-
+        
         <div className="flex justify-between items-center mt-4">
           <button
             onClick={() => handleViewDetails(fir)}
@@ -270,29 +442,41 @@ const FIRSubmission = () => {
           </button>
           {fir.status === "Active" && (
             <button
-              onClick={() => handleTrackInvestigation(fir.id)}
-              className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
+              onClick={() => handleStartSolvingCase(fir.id)}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
             >
-              Track Investigation
+              Start Solving Case
             </button>
           )}
         </div>
+        
+        {/* Add Reopen Case button for Unsolved cases */}
+        {fir.status === "UnSolved" && (
+          <div className="mt-4">
+            <button
+              onClick={() => openReopenModal(fir.id)}
+              className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 w-full"
+            >
+              Reopen Case
+            </button>
+          </div>
+        )}
       </div>
     ));
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-300">
-      <Header />
-      <Navbar />
-      <Chatbot />
+      <Headeri />
+      <Navbari />
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-          Solved Cases / FIRs
+          FIR Cases Management System
         </h1>
         
+        {/* Sort Dropdown */}
         <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
           <div className="relative w-40 sm:w-20">
             <button
@@ -326,35 +510,95 @@ const FIRSubmission = () => {
             )}
           </div>
         </div>
+        
         <div className="mt-12">
+         
+        
+          {/* UnSolved Cases Section */}
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Solved Cases ({firs.filter((f) => f.status === "Solved").length})
+              UnSolved Cases ({firs.filter((f) => f.status === "UnSolved").length})
             </h2>
-            {loading ? (
-              <div className="flex justify-center">
-                <TailSpin color="#6366f1" height={50} width={50} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {renderFIRsByStatus("Solved")}
-              </div>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {renderFIRsByStatus("UnSolved")}
+            </div>
           </div>
+
         </div>
       </main>
 
-      {showTrackInvestigation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      {/* Reason Input Modal */}
+      {showReasonModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Provide Reason for {currentStatus}</h2>
+            <textarea
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              className="w-full p-3 border rounded mb-4"
+              rows={5}
+              placeholder={`Enter reason for marking this case as ${currentStatus}...`}
+            />
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowReasonModal(false)}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveReason}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Save Reason
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reopen Case Modal */}
+      {showReopenModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Provide Reason for Reopening Case</h2>
+            <textarea
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              className="w-full p-3 border rounded mb-4"
+              rows={5}
+              placeholder="Enter reason for reopening this case..."
+            />
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowReopenModal(false)}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReopenCase}
+                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+              >
+                Reopen Case
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Investigation Form Modal */}
+      {showInvestigationForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Track Investigation</h2>
+            <h2 className="text-2xl font-bold mb-6">Investigation Form</h2>
             <div className="mb-4">
               <h3 className="text-lg font-semibold mb-2">
                 Progress: {calculateProgress().toFixed(2)}%
               </h3>
-              <div className="w-full bg-gradient-to-r from-blue-400 to-purple-500 rounded-full h-3 shadow-lg">
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
-                  className="bg-gradient-to-r from-green-400 to-blue-500 h-3 rounded-full transition-all duration-300"
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${calculateProgress()}%` }}
                 ></div>
               </div>
@@ -362,31 +606,34 @@ const FIRSubmission = () => {
             {investigationSteps.map((phase, phaseIndex) => (
               <div key={phaseIndex} className="mb-6">
                 <h3 className="text-xl font-semibold mb-4">{phase.phase}</h3>
-                {phase.steps.map((step, stepIndex) => {
-                  const stepValue = investigationData[phaseIndex]?.[stepIndex];
-                  if (stepValue) {
-                    return (
-                      <div key={stepIndex} className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {step}
-                        </label>
-                        <textarea
-                          value={stepValue}
-                          readOnly
-                          className="mt-1 p-2 w-full border rounded-md bg-gray-100"
-                          rows={3}
-                        />
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
+                {phase.steps.map((step, stepIndex) => (
+                  <div key={stepIndex} className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {step}
+                    </label>
+                    <textarea
+                      value={investigationData[phaseIndex]?.[stepIndex] || ""}
+                      onChange={(e) =>
+                        handleInputChange(phaseIndex, stepIndex, e.target.value)
+                      }
+                      className="mt-1 p-2 w-full border rounded-md"
+                      rows={3}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
             <div className="flex justify-end">
               <button
-                onClick={() => setShowTrackInvestigation(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                onClick={handleSaveInvestigation}
+                disabled={saveLoading}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                {saveLoading ? "Saving..." : "Save Investigation"}
+              </button>
+              <button
+                onClick={() => setShowInvestigationForm(false)}
+                className="ml-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
                 Close
               </button>
@@ -395,15 +642,14 @@ const FIRSubmission = () => {
         </div>
       )}
 
+      {/* FIR Details Modal */}
       {showModal && selectedFIR && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">FIR Details</h2>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">
-                Complainant Information
-              </h3>
+              <h3 className="text-xl font-semibold mb-4">Complainant Information</h3>
               <p>
                 <strong>Name:</strong> {selectedFIR.complainantName}
               </p>
@@ -447,9 +693,7 @@ const FIRSubmission = () => {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">
-                Suspect Information
-              </h3>
+              <h3 className="text-xl font-semibold mb-4">Suspect Information</h3>
               <p>
                 <strong>Name:</strong> {selectedFIR.suspectDetails.name}
               </p>
@@ -464,9 +708,7 @@ const FIRSubmission = () => {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">
-                Witness Information
-              </h3>
+              <h3 className="text-xl font-semibold mb-4">Witness Information</h3>
               <p>
                 <strong>Name:</strong> {selectedFIR.witnessDetails.name}
               </p>
@@ -476,9 +718,7 @@ const FIRSubmission = () => {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">
-                Supporting Documents
-              </h3>
+              <h3 className="text-xl font-semibold mb-4">Supporting Documents</h3>
               <div className="space-y-2">
                 {selectedFIR.supportingDocuments.map((url, index) => (
                   <div key={index} className="text-blue-600">
@@ -506,4 +746,3 @@ const FIRSubmission = () => {
 };
 
 export default FIRSubmission;
-

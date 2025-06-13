@@ -31,32 +31,32 @@ const Profile = () => {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchInvestigator = async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        toast.error("No user found. Please log in.");
-        navigate("/Investigator/Login");
-        return;
-      }
+ useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      toast.error("No user found. Please log in.");
+      navigate("/Investigator/Login");
+      return;
+    }
 
-      try {
-        const userDoc = await getDoc(doc(db, "investigatordata", user.uid));
-        if (userDoc.exists()) {
-          setInvestigator(userDoc.data());
-          setEmailVerified(user.emailVerified);
-        } else {
-          toast.error("User data not found.");
-        }
-      } catch (error) {
-        toast.error("Error fetching profile data.");
-      } finally {
-        setLoading(false);
+    try {
+      const userDoc = await getDoc(doc(db, "investigatordata", user.uid));
+      if (userDoc.exists()) {
+        setInvestigator(userDoc.data());
+        setEmailVerified(user.emailVerified);
+      } else {
+        toast.error("User data not found.");
       }
-    };
+    } catch (error) {
+      toast.error("Error fetching profile data.");
+    } finally {
+      setLoading(false);
+    }
+  });
 
-    fetchInvestigator();
-  }, [navigate]);
+  return () => unsubscribe(); // Clean up the listener on unmount
+}, [navigate]);
+
 
   const handlePasswordChange = async () => {
     if (
