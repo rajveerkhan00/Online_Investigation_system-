@@ -409,7 +409,6 @@ const InvestigatorChat = () => {
           )}
         </div>
       </div>  
-      <Footer />
     </>
   );
 };
