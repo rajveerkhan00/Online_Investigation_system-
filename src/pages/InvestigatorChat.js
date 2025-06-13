@@ -15,6 +15,7 @@ const InvestigatorChat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState({});
+  const [showChatList, setShowChatList] = useState(true); // For mobile toggle
   const messagesEndRef = useRef(null);
 
   // Fetch all active chats for this investigator and user data
@@ -41,7 +42,7 @@ const InvestigatorChat = () => {
             const userSnapshot = await getDocs(userQuery);
             
             if (!userSnapshot.empty) {
-              const userDoc = userSnapshot.docs[0].data();
+              const userDoc  = userSnapshot.docs[0].data();
               userDataMap[userId] = {
                 username: userDoc.username || `User (${userId.slice(0, 4)})`,
                 email: userDoc.email || 'No email'
@@ -158,13 +159,35 @@ const InvestigatorChat = () => {
       <Navbari />
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
       
-      <div className="flex h-screen bg-gray-100 mt-2 mb-20">
+      <div className="flex flex-col md:flex-row h-[calc(100vh-120px)] bg-gray-100 mt-2 mb-20">
+        {/* Mobile Chat List Toggle Button */}
+        <button 
+          onClick={() => setShowChatList(!showChatList)}
+          className="md:hidden p-2 bg-gray-200 text-gray-700 flex items-center justify-center"
+        >
+          {showChatList ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Hide Chats
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+              Show Chats
+            </>
+          )}
+        </button>
+
         {/* Chat List */}
-        <div className="w-1/4 bg-white border-r border-gray-200">
+        <div className={`${showChatList ? 'block' : 'hidden'} md:block w-full md:w-1/3 lg:w-1/4 bg-white border-r border-gray-200`}>
           <div className="p-4 bg-gray-500 text-white">
             <h2 className="text-xl font-semibold">Your Active Chats</h2>
           </div>
-          <div className="overflow-y-auto h-full">
+          <div className="overflow-y-auto h-[calc(100%-60px)]">
             {activeChats.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
                 No active chats yet
@@ -173,23 +196,28 @@ const InvestigatorChat = () => {
               activeChats.map(chat => (
                 <div
                   key={chat.id}
-                  onClick={() => setSelectedChat(chat)}
-                  className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  onClick={() => {
+                    setSelectedChat(chat);
+                    if (window.innerWidth < 768) {
+                      setShowChatList(false);
+                    }
+                  }}
+                  className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
                     selectedChat?.id === chat.id ? 'bg-gray-50' : ''
                   }`}
                 >
                   <div className="flex items-center">
-                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-indigo-600 font-semibold">
+                    <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-gray-100 flex items-center justify-center text-indigo-600 font-semibold">
                       {userData[chat.userId]?.username?.charAt(0) || 'U'}
                     </div>
-                    <div className="ml-3">
-                      <p className="font-bold text-lg text-gray-900">
+                    <div className="ml-3 overflow-hidden">
+                      <p className="font-bold text-sm md:text-lg text-gray-900 truncate">
                         {userData[chat.userId]?.username || 'User'}
                       </p>
-                      <p className="text-xs text-gray-500 font-light">
+                      <p className="text-xs text-gray-500 font-light truncate">
                         {userData[chat.userId]?.email}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         {chat.updatedAt?.toDate().toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit'
@@ -213,27 +241,35 @@ const InvestigatorChat = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
+        <div className={`${!showChatList || selectedChat ? 'block' : 'hidden md:block'} flex-1 flex flex-col`}>
           {selectedChat ? (
             <>
-              {/* Chat Header */}
-              <div className="p-4 bg-white border-b border-gray-200 flex items-center">
-                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-indigo-600 font-semibold">
+              {/* Chat Header with back button for mobile */}
+              <div className="p-3 bg-white border-b border-gray-200 flex items-center">
+                <button 
+                  onClick={() => setShowChatList(true)}
+                  className="md:hidden mr-2 text-gray-600"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-gray-100 flex items-center justify-center text-indigo-600 font-semibold">
                   {userData[selectedChat.userId]?.username?.charAt(0) || 'U'}
                 </div>
-                <div className="ml-3">
-                  <h3 className="font-bold text-lg text-gray-900">
+                <div className="ml-3 overflow-hidden">
+                  <h3 className="font-bold text-sm md:text-lg text-gray-900 truncate">
                     {userData[selectedChat.userId]?.username || 'User'}
                   </h3>
-                  <p className="text-xs text-gray-500 font-light">
+                  <p className="text-xs text-gray-500 font-light truncate">
                     {userData[selectedChat.userId]?.email}
                   </p>
-                  <p className="text-sm text-gray-500">Active now</p>
+                  <p className="text-xs text-gray-500">Active now</p>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+              <div className="flex-1 p-3 overflow-y-auto bg-gray-50">
                 {messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -260,7 +296,7 @@ const InvestigatorChat = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {messages.map(message => (
                       <div
                         key={message.id}
@@ -269,17 +305,17 @@ const InvestigatorChat = () => {
                         }`}
                       >
                         <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          className={`max-w-[80%] md:max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
                             message.senderType === 'investigator'
                               ? 'bg-gray-600 text-white rounded-br-none'
                               : 'bg-white text-gray-800 rounded-bl-none shadow'
                           } ${
                             message.senderType === 'user' && !message.read
-                              ? 'ring-2 ring-indigo-300'
+                              ? 'ring-1 ring-indigo-300'
                               : ''
                           }`}
                         >
-                          <p>{message.content}</p>
+                          <p className="break-words">{message.content}</p>
                           <p
                             className={`text-xs mt-1 ${
                               message.senderType === 'investigator'
@@ -304,7 +340,7 @@ const InvestigatorChat = () => {
               </div>
 
               {/* Message Input */}
-              <div className="p-4 bg-white border-t border-gray-200">
+              <div className="p-3 bg-white border-t border-gray-200">
                 <div className="flex items-center">
                   <input
                     type="text"
@@ -312,12 +348,12 @@ const InvestigatorChat = () => {
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="Type your message..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-l-full focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-indigo-500"
+                    className="flex-1 px-3 py-2 text-sm md:text-base border border-gray-300 rounded-l-full focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-gray-500 focus:border-indigo-500"
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
-                    className={`px-4 py-2 rounded-r-full ${
+                    className={`px-3 py-2 rounded-r-full ${
                       newMessage.trim()
                         ? 'bg-gray-600 text-white hover:bg-gray-700'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -341,7 +377,7 @@ const InvestigatorChat = () => {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center bg-gray-50">
-              <div className="text-center">
+              <div className="text-center p-4">
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
                   fill="none"
@@ -362,6 +398,12 @@ const InvestigatorChat = () => {
                 <p className="mt-1 text-sm text-gray-500">
                   Choose a chat from the list to view messages
                 </p>
+                <button
+                  onClick={() => setShowChatList(true)}
+                  className="mt-4 md:hidden px-4 py-2 bg-gray-600 text-white rounded-lg"
+                >
+                  Show Chat List
+                </button>
               </div>
             </div>
           )}
