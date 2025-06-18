@@ -8,7 +8,6 @@ import { db, auth } from "../firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
 import Chatbot from "../components/Chatbot";
-import UserChat from "../components/ChatUI";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
 
 const investigationSteps = [
@@ -287,7 +286,6 @@ const FIRSubmission = () => {
       <Header />
       <Navbar />
       <Chatbot />
-      <UserChat />
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
