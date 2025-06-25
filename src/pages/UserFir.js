@@ -15,7 +15,10 @@ import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
 // Initialize Cloudinary
 const cld = new Cloudinary({ cloud: { cloudName: "dtv5vzkms" } });
 
-// Function to extract public ID from Cloudinary URL
+// Google Cloud Vision API key
+const GOOGLE_API_KEY = "AIzaSyCRpxAGyeYe1bypW2SV66Om9MEs5hWbRfE";
+
+// Helper function to extract public ID from Cloudinary URL
 const extractPublicId = (url) => {
   const parts = url.split("/upload/");
   if (parts.length > 1) {
@@ -56,6 +59,7 @@ const FIRSubmission = () => {
     termsAgreed: false,
     userId: "",
     assignedInvestigator: "",
+    idVerified: false,
   });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -63,7 +67,74 @@ const FIRSubmission = () => {
   const [selectedInvestigator, setSelectedInvestigator] = useState(null);
   const [investigatorSpace, setInvestigatorSpace] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [idCardUploaded, setIdCardUploaded] = useState({
+    front: false,
+    back: false,
+  });
 
+  // Verify ID card using Google Cloud Vision API
+const verifyIdCard = async (imageUrl) => {
+  try {
+    setVerifying(true);
+    toast.info("Verifying ID card...");
+
+    // 1. Try API verification first
+    try {
+      const formData = new FormData();
+      let imageFile;
+      
+      if (imageUrl.startsWith('http')) {
+        const response = await fetch(imageUrl);
+        imageFile = await response.blob();
+      }
+
+      formData.append('file', imageFile);
+      formData.append('country', 'PK');
+      formData.append('documentType', 'id');
+      formData.append('authenticate', 'true');
+
+      const apiResponse = await fetch('https://api.idanalyzer.com/v1', {
+        method: 'POST',
+        headers: { 'X-API-KEY': 'OkMWL27f8yb1pULMeGkXWtwhmQiB7xiQ' },
+        body: formData
+      });
+
+      const result = await apiResponse.json();
+      
+      if (result?.authentication?.authentic === true) {
+        toast.success("ID Verified");
+        return true;
+      }
+    } catch (error) {
+      console.log("API failed, trying fallback verification");
+    }
+
+    // 2. Fallback to dimension check
+    const img = new Image();
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.src = imageUrl;
+    });
+
+    const aspectRatio = img.width / img.height;
+    const isIDCard = Math.abs(aspectRatio - 1.58) < 0.2;
+
+    if (isIDCard) {
+      toast.success("ID Verified");
+      return true;
+    }
+
+    toast.error("Please upload clear ID card picture");
+    return false;
+
+  } catch (error) {
+    toast.error("Please upload clear ID card picture");
+    return false;
+  } finally {
+    setVerifying(false);
+  }
+};
   // Fetch FIRs for the logged-in user
   useEffect(() => {
     const fetchFirs = async () => {
@@ -196,18 +267,41 @@ const FIRSubmission = () => {
     }
   };
 
-  // Handle ID card upload
+  // Handle ID card upload with verification
   const handleIdCardUpload = async (e, side) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const url = await handleImageUpload(file);
-    if (url) {
-      setNewFIR((prev) => ({
-        ...prev,
-        [side === "front" ? "idCardFront" : "idCardBack"]: url,
-      }));
-      toast.success(`${side === "front" ? "Front" : "Back"} ID uploaded successfully!`);
+    if (!url) return;
+
+    setNewFIR(prev => ({
+      ...prev,
+      [side === "front" ? "idCardFront" : "idCardBack"]: url,
+    }));
+    
+    setIdCardUploaded(prev => ({ ...prev, [side]: true }));
+    toast.success(`${side === "front" ? "Front" : "Back"} ID uploaded successfully!`);
+
+    // Verify the ID card if both sides are uploaded
+    if ((side === "front" && idCardUploaded.back) || (side === "back" && idCardUploaded.front)) {
+      const frontVerified = side === "front" ? 
+        await verifyIdCard(url) : 
+        await verifyIdCard(newFIR.idCardFront);
+      
+      const backVerified = side === "back" ? 
+        await verifyIdCard(url) : 
+        await verifyIdCard(newFIR.idCardBack);
+
+      const isVerified = frontVerified && backVerified;
+      
+      setNewFIR(prev => ({ ...prev, idVerified: isVerified }));
+      
+      if (isVerified) {
+        toast.success("Pakistani ID card verified successfully!");
+      } else {
+        toast.warning("Could not verify as a valid Pakistani ID card. Please ensure both sides are clear.");
+      }
     }
   };
 
@@ -249,44 +343,7 @@ const FIRSubmission = () => {
     toast.info("Document removed");
   };
 
-  // Submit FIR to Firestore
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) return;
-
-    const user = auth.currentUser;
-    if (!user) {
-      toast.error("Please log in to submit an FIR.");
-      return;
-    }
-
-    if (!selectedInvestigator || !investigatorSpace) {
-      toast.error("Please select an investigator with available space.");
-      return;
-    }
-
-    try {
-      const firData = {
-        ...newFIR,
-        incidentType:
-          newFIR.incidentType === "Other"
-            ? newFIR.customIncidentType
-            : newFIR.incidentType,
-        timestamp: new Date().toISOString(),
-        userId: user.uid,
-        assignedInvestigator: selectedInvestigator,
-      };
-
-      const docRef = await addDoc(collection(db, "firs"), firData);
-      setFirs((prev) => [...prev, { id: docRef.id, ...firData }]);
-      toast.success("FIR submitted successfully!");
-      resetForm();
-    } catch (error) {
-      toast.error(error.message || "FIR submission failed");
-    }
-  };
-
+  // Form validation
   const validateForm = () => {
     const requiredFields = [
       "complainantName",
@@ -322,9 +379,58 @@ const FIRSubmission = () => {
       return false;
     }
 
+    if (!selectedInvestigator || !investigatorSpace) {
+      toast.error("Please select an available investigator");
+      return false;
+    }
+
     return true;
   };
 
+  // Submit FIR to Firestore
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error("Please log in to submit an FIR.");
+      return;
+    }
+
+    // If not verified yet, try verification now
+    if (!newFIR.idVerified) {
+      const isVerified = await verifyIdCard(newFIR.idCardFront);
+      setNewFIR(prev => ({ ...prev, idVerified: isVerified }));
+      if (!isVerified) {
+        toast.warning("Could not verify ID details. Please ensure the images are clear.");
+        return;
+      }
+    }
+
+    try {
+      const firData = {
+        ...newFIR,
+        incidentType:
+          newFIR.incidentType === "Other"
+            ? newFIR.customIncidentType
+            : newFIR.incidentType,
+        timestamp: new Date().toISOString(),
+        userId: user.uid,
+        assignedInvestigator: selectedInvestigator,
+      };
+
+      const docRef = await addDoc(collection(db, "firs"), firData);
+      setFirs((prev) => [...prev, { id: docRef.id, ...firData }]);
+      toast.success("FIR submitted successfully!");
+      resetForm();
+    } catch (error) {
+      toast.error(error.message || "FIR submission failed");
+    }
+  };
+
+  // Reset form to initial state
   const resetForm = () => {
     setNewFIR({
       complainantName: "",
@@ -356,11 +462,15 @@ const FIRSubmission = () => {
       termsAgreed: false,
       userId: "",
       assignedInvestigator: "",
+      idVerified: false,
+    });
+    setIdCardUploaded({
+      front: false,
+      back: false,
     });
     setShowForm(false);
     setSelectedInvestigator(null);
     setInvestigatorSpace(null);
-    toast.info("Form reset successfully!");
   };
 
   return (
@@ -395,6 +505,44 @@ const FIRSubmission = () => {
             >
               File New FIR +
             </button>
+
+            {!loading && firs.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-2xl font-bold mb-4">Your Previous FIRs</h2>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="py-2 px-4 border">FIR ID</th>
+                        <th className="py-2 px-4 border">Incident Type</th>
+                        <th className="py-2 px-4 border">Date/Time</th>
+                        <th className="py-2 px-4 border">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {firs.map((fir) => (
+                        <tr key={fir.id} className="hover:bg-gray-50">
+                          <td className="py-2 px-4 border">{fir.id.substring(0, 8)}...</td>
+                          <td className="py-2 px-4 border">{fir.incidentType}</td>
+                          <td className="py-2 px-4 border">
+                            {new Date(fir.incidentDateTime).toLocaleString()}
+                          </td>
+                          <td className="py-2 px-4 border">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              fir.status === "Pending" ? "bg-yellow-100 text-yellow-800" :
+                              fir.status === "Active" ? "bg-blue-100 text-blue-800" :
+                              "bg-green-100 text-green-800"
+                            }`}>
+                              {fir.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <form
@@ -407,35 +555,41 @@ const FIRSubmission = () => {
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Complainant Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  name="complainantName"
-                  value={newFIR.complainantName}
-                  onChange={handleChange}
-                  placeholder="Full Name *"
-                  className="p-2 border rounded"
-                  required
-                />
-                <input
-                  name="contactNumber"
-                  value={newFIR.contactNumber}
-                  onChange={handleChange}
-                  placeholder="Contact Number *"
-                  className="p-2 border rounded"
-                  pattern="\d{10}"
-                  required
-                />
-                <input
-                  name="email"
-                  type="email"
-                  value={newFIR.email}
-                  onChange={handleChange}
-                  placeholder="Email Address"
-                  className="p-2 border rounded"
-                />
+                <div>
+                  <input
+                    name="complainantName"
+                    value={newFIR.complainantName}
+                    onChange={handleChange}
+                    placeholder="Full Name *"
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <input
+                    name="contactNumber"
+                    value={newFIR.contactNumber}
+                    onChange={handleChange}
+                    placeholder="Contact Number *"
+                    className="w-full p-2 border rounded"
+                    pattern="\d{10}"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <input
+                    name="email"
+                    type="email"
+                    value={newFIR.email}
+                    onChange={handleChange}
+                    placeholder="Email Address"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* ID Card Upload */}
+            {/* ID Card Upload and Verification */}
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">ID Card Verification (Required)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -447,7 +601,7 @@ const FIRSubmission = () => {
                     onChange={(e) => handleIdCardUpload(e, "front")}
                     className="w-full p-2 border rounded"
                     required
-                    disabled={uploading}
+                    disabled={uploading || verifying}
                   />
                   {newFIR.idCardFront && (
                     <div className="mt-2">
@@ -456,6 +610,9 @@ const FIRSubmission = () => {
                         className="h-32 object-contain border rounded mx-auto"
                       />
                     </div>
+                  )}
+                  {!idCardUploaded.front && (
+                    <p className="text-red-500 text-sm mt-1">Front ID card is required</p>
                   )}
                 </div>
                 <div>
@@ -466,7 +623,7 @@ const FIRSubmission = () => {
                     onChange={(e) => handleIdCardUpload(e, "back")}
                     className="w-full p-2 border rounded"
                     required
-                    disabled={uploading}
+                    disabled={uploading || verifying}
                   />
                   {newFIR.idCardBack && (
                     <div className="mt-2">
@@ -476,49 +633,71 @@ const FIRSubmission = () => {
                       />
                     </div>
                   )}
+                  {!idCardUploaded.back && (
+                    <p className="text-red-500 text-sm mt-1">Back ID card is required</p>
+                  )}
                 </div>
               </div>
+              {newFIR.idVerified ? (
+                <p className="text-green-600 mt-2">✓ ID successfully verified</p>
+              ) : idCardUploaded.front && idCardUploaded.back ? (
+                verifying ? (
+                  <p className="text-blue-600 mt-2">Verifying ID, please wait...</p>
+                ) : (
+                  <p className="text-yellow-600 mt-2">
+                    ID verification required. Please click "Submit FIR" to complete verification.
+                  </p>
+                )
+              ) : (
+                <p className="text-gray-600 mt-2">
+                  Please upload both front and back of your ID card
+                </p>
+              )}
             </div>
 
             {/* Incident Details */}
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Incident Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <select
-                  name="incidentType"
-                  value={newFIR.incidentType}
-                  onChange={handleChange}
-                  className="p-2 border rounded"
-                  required
-                >
-                  <option value="">Select Incident Type *</option>
-                  <option value="Theft">Theft</option>
-                  <option value="Assault">Assault</option>
-                  <option value="Burglary">Burglary</option>
-                  <option value="Fraud">Fraud</option>
-                  <option value="Cyber Crime">Cyber Crime</option>
-                  <option value="Other">Other</option>
-                </select>
-
-                {newFIR.incidentType === "Other" && (
-                  <input
-                    name="customIncidentType"
-                    value={newFIR.customIncidentType}
+                <div>
+                  <select
+                    name="incidentType"
+                    value={newFIR.incidentType}
                     onChange={handleChange}
-                    placeholder="Specify Incident Type *"
-                    className="p-2 border rounded"
+                    className="w-full p-2 border rounded"
+                    required
+                  >
+                    <option value="">Select Incident Type *</option>
+                    <option value="Theft">Theft</option>
+                    <option value="Assault">Assault</option>
+                    <option value="Burglary">Burglary</option>
+                    <option value="Fraud">Fraud</option>
+                    <option value="Cyber Crime">Cyber Crime</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  {newFIR.incidentType === "Other" && (
+                    <input
+                      name="customIncidentType"
+                      value={newFIR.customIncidentType}
+                      onChange={handleChange}
+                      placeholder="Specify Incident Type *"
+                      className="w-full p-2 border rounded"
+                      required
+                    />
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <input
+                    type="datetime-local"
+                    name="incidentDateTime"
+                    value={newFIR.incidentDateTime}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded"
                     required
                   />
-                )}
-
-                <input
-                  type="datetime-local"
-                  name="incidentDateTime"
-                  value={newFIR.incidentDateTime}
-                  onChange={handleChange}
-                  className="p-2 border rounded"
-                  required
-                />
+                </div>
               </div>
             </div>
 
@@ -526,37 +705,45 @@ const FIRSubmission = () => {
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Location Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  name="incidentLocation.address"
-                  value={newFIR.incidentLocation.address}
-                  onChange={handleChange}
-                  placeholder="Address *"
-                  className="p-2 border rounded"
-                  required
-                />
-                <input
-                  name="incidentLocation.city"
-                  value={newFIR.incidentLocation.city}
-                  onChange={handleChange}
-                  placeholder="City *"
-                  className="p-2 border rounded"
-                  required
-                />
-                <input
-                  name="incidentLocation.state"
-                  value={newFIR.incidentLocation.state}
-                  onChange={handleChange}
-                  placeholder="State *"
-                  className="p-2 border rounded"
-                  required
-                />
-                <input
-                  name="incidentLocation.gpsCoordinates"
-                  value={newFIR.incidentLocation.gpsCoordinates}
-                  onChange={handleChange}
-                  placeholder="GPS Coordinates (optional)"
-                  className="p-2 border rounded"
-                />
+                <div>
+                  <input
+                    name="incidentLocation.address"
+                    value={newFIR.incidentLocation.address}
+                    onChange={handleChange}
+                    placeholder="Address *"
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <input
+                    name="incidentLocation.city"
+                    value={newFIR.incidentLocation.city}
+                    onChange={handleChange}
+                    placeholder="City *"
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <input
+                    name="incidentLocation.state"
+                    value={newFIR.incidentLocation.state}
+                    onChange={handleChange}
+                    placeholder="State *"
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <input
+                    name="incidentLocation.gpsCoordinates"
+                    value={newFIR.incidentLocation.gpsCoordinates}
+                    onChange={handleChange}
+                    placeholder="GPS Coordinates (optional)"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
               </div>
             </div>
 
@@ -564,28 +751,34 @@ const FIRSubmission = () => {
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Suspect Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  name="suspectDetails.name"
-                  value={newFIR.suspectDetails.name}
-                  onChange={handleChange}
-                  placeholder="Suspect Name (if known)"
-                  className="p-2 border rounded"
-                />
-                <input
-                  name="suspectDetails.knownAddress"
-                  value={newFIR.suspectDetails.knownAddress}
-                  onChange={handleChange}
-                  placeholder="Known Address"
-                  className="p-2 border rounded"
-                />
-                <textarea
-                  name="suspectDetails.description"
-                  value={newFIR.suspectDetails.description}
-                  onChange={handleChange}
-                  placeholder="Physical Description"
-                  className="p-2 border rounded col-span-2"
-                  rows="3"
-                />
+                <div>
+                  <input
+                    name="suspectDetails.name"
+                    value={newFIR.suspectDetails.name}
+                    onChange={handleChange}
+                    placeholder="Suspect Name (if known)"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <input
+                    name="suspectDetails.knownAddress"
+                    value={newFIR.suspectDetails.knownAddress}
+                    onChange={handleChange}
+                    placeholder="Known Address"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <textarea
+                    name="suspectDetails.description"
+                    value={newFIR.suspectDetails.description}
+                    onChange={handleChange}
+                    placeholder="Physical Description"
+                    className="w-full p-2 border rounded"
+                    rows="3"
+                  />
+                </div>
               </div>
             </div>
 
@@ -593,30 +786,35 @@ const FIRSubmission = () => {
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Witness Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  name="witnessDetails.name"
-                  value={newFIR.witnessDetails.name}
-                  onChange={handleChange}
-                  placeholder="Witness Name (if any)"
-                  className="p-2 border rounded"
-                />
-                <input
-                  name="witnessDetails.contact"
-                  value={newFIR.witnessDetails.contact}
-                  onChange={handleChange}
-                  placeholder="Witness Contact Information"
-                  className="p-2 border rounded"
-                />
+                <div>
+                  <input
+                    name="witnessDetails.name"
+                    value={newFIR.witnessDetails.name}
+                    onChange={handleChange}
+                    placeholder="Witness Name (if any)"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <input
+                    name="witnessDetails.contact"
+                    value={newFIR.witnessDetails.contact}
+                    onChange={handleChange}
+                    placeholder="Witness Contact Information"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Incident Description */}
             <div className="mb-6">
+              <h3 className="text-xl font-semibold mb-4">Incident Description *</h3>
               <textarea
                 name="incidentDescription"
                 value={newFIR.incidentDescription}
                 onChange={handleChange}
-                placeholder="Detailed Description of Incident *"
+                placeholder="Provide detailed description of what happened *"
                 className="w-full p-2 border rounded"
                 rows="5"
                 required
@@ -671,14 +869,14 @@ const FIRSubmission = () => {
             {/* Investigator Selection */}
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Investigator Assignment</h3>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <select
                   value={selectedInvestigator || ""}
                   onChange={(e) => {
                     setSelectedInvestigator(e.target.value);
                     setInvestigatorSpace(null);
                   }}
-                  className="p-2 border rounded"
+                  className="flex-grow p-2 border rounded"
                   required
                 >
                   <option value="">Select Investigator *</option>
@@ -692,7 +890,7 @@ const FIRSubmission = () => {
                   type="button"
                   onClick={() => checkInvestigatorSpace(selectedInvestigator)}
                   disabled={!selectedInvestigator || uploading}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
                 >
                   Check Availability
                 </button>
@@ -706,7 +904,7 @@ const FIRSubmission = () => {
 
             {/* Terms and Conditions */}
             <div className="mb-6">
-              <label className="flex items-center">
+              <label className="flex items-start">
                 <input
                   type="checkbox"
                   name="termsAgreed"
@@ -717,7 +915,7 @@ const FIRSubmission = () => {
                       termsAgreed: e.target.checked,
                     }))
                   }
-                  className="mr-2"
+                  className="mt-1 mr-2"
                   required
                 />
                 <span>
@@ -728,19 +926,19 @@ const FIRSubmission = () => {
               </label>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-                disabled={uploading}
+                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex-1"
+                disabled={uploading || !idCardUploaded.front || !idCardUploaded.back}
               >
-                {uploading ? "Processing..." : "Submit FIR"}
+                {uploading ? "Uploading..." : verifying ? "Verifying..." : "Submit FIR"}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
-                disabled={uploading}
+                className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 flex-1"
+                disabled={uploading || verifying}
               >
                 Cancel
               </button>

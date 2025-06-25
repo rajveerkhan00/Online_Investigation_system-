@@ -7,6 +7,7 @@
     "@cloudinary/url-gen": "^1.21.0",
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "@fortawesome/fontawesome-free": "^6.7.2",
+    "@google-cloud/vision": "^5.2.0",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@testing-library/jest-dom": "^5.17.0",

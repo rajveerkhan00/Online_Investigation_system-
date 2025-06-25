@@ -14,27 +14,63 @@ const UserChat = () => {
   const [showInvestigatorList, setShowInvestigatorList] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // Fetch all investigators
-  useEffect(() => {
-    const fetchInvestigators = async () => {
-      try {
-        const q = query(collection(db, 'investigatordata'));
-        const querySnapshot = await getDocs(q);
-        const investigatorsList = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setInvestigators(investigatorsList);
+ useEffect(() => {
+  const fetchAssignedInvestigators = async () => {
+    try {
+      setLoading(true);
+      
+      // Get current user ID
+      const currentUserId = auth.currentUser?.uid;
+      if (!currentUserId) {
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching investigators:', error);
-        setLoading(false);
+        return;
       }
-    };
 
-    fetchInvestigators();
-  }, []);
+      // Query FIRs where this user is the complainant (userId)
+      const firsQuery = query(
+        collection(db, 'firs'),
+        where('userId', '==', currentUserId)
+      );
+      const firsSnapshot = await getDocs(firsQuery);
 
+      // Get unique investigator IDs assigned to user's FIRs
+      const assignedInvestigatorIds = [];
+      firsSnapshot.forEach(doc => {
+        const firData = doc.data();
+        if (firData.assignedInvestigator && !assignedInvestigatorIds.includes(firData.assignedInvestigator)) {
+          assignedInvestigatorIds.push(firData.assignedInvestigator);
+        }
+      });
+
+      // If no investigators found, set empty and return
+      if (assignedInvestigatorIds.length === 0) {
+        setInvestigators([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch investigator details for the assigned investigators
+      const investigatorsQuery = query(
+        collection(db, 'investigatordata'),
+        where('uid', 'in', assignedInvestigatorIds)
+      );
+      const investigatorsSnapshot = await getDocs(investigatorsQuery);
+
+      const investigatorsList = investigatorsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setInvestigators(investigatorsList);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching assigned investigators:', error);
+      setLoading(false);
+    }
+  };
+
+  fetchAssignedInvestigators();
+}, []);
   // Load messages when an investigator is selected
   useEffect(() => {
     if (!selectedInvestigator || !auth.currentUser) return;

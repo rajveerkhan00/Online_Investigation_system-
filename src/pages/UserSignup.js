@@ -51,9 +51,9 @@ function Signup() {
 
       const user = userCredential.user;
 
-      // Store complete user data in Firestore
+      // Store complete user data in Firestore including UID
       await setDoc(doc(db, "usersdata", user.uid), {
-        uid: user.uid, // Explicitly store UID
+        uid: user.uid, // Storing UID in the document
         username: formData.username,
         email: formData.email,
         role: "user",
