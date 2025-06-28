@@ -33,6 +33,8 @@ import IrejectedFir from '../pages/RejectedFir';
 import IUnsolvedFir from '../pages/UnsolvedFir';
 import UserChat from '../pages/UserChat';
 import InvestigatorChat from '../pages/InvestigatorChat';
+import Id from '../pages/idcard';
+
 
 
 // import CurrnetCase from '../pages/currentcase';
@@ -75,6 +77,8 @@ export default function Menuroutes() {
           <Route path="/Investigator/RejectedFir" element={<IrejectedFir />} />
           <Route path="/User/Chat" element={<UserChat />} />
           <Route path="/Investigator/Chat" element={<InvestigatorChat />} />
+          <Route path="/Idcard" element={<Id />} />
+      
           
           {/* 
           <Route path="/Mycases" element={<Mycases />} />

@@ -15,18 +15,6 @@ import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
 // Initialize Cloudinary
 const cld = new Cloudinary({ cloud: { cloudName: "dtv5vzkms" } });
 
-// Google Cloud Vision API key
-const GOOGLE_API_KEY = "AIzaSyCRpxAGyeYe1bypW2SV66Om9MEs5hWbRfE";
-
-// Helper function to extract public ID from Cloudinary URL
-const extractPublicId = (url) => {
-  const parts = url.split("/upload/");
-  if (parts.length > 1) {
-    return parts[1].split(".")[0];
-  }
-  return url;
-};
-
 const FIRSubmission = () => {
   const [firs, setFirs] = useState([]);
   const [newFIR, setNewFIR] = useState({
@@ -54,7 +42,6 @@ const FIRSubmission = () => {
     incidentDescription: "",
     supportingDocuments: [],
     idCardFront: "",
-    idCardBack: "",
     status: "Pending",
     termsAgreed: false,
     userId: "",
@@ -68,73 +55,48 @@ const FIRSubmission = () => {
   const [investigatorSpace, setInvestigatorSpace] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [idCardUploaded, setIdCardUploaded] = useState({
-    front: false,
-    back: false,
-  });
+  const [idCardUploaded, setIdCardUploaded] = useState(false);
 
-  // Verify ID card using Google Cloud Vision API
-const verifyIdCard = async (imageUrl) => {
-  try {
-    setVerifying(true);
-    toast.info("Verifying ID card...");
-
-    // 1. Try API verification first
+  // Verify ID card using Tesseract.js backend
+  const verifyIdCard = async (imageUrl) => {
     try {
+      setVerifying(true);
+      toast.info("Verifying ID card...");
+
+      // Convert Cloudinary URL to blob for upload
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+
       const formData = new FormData();
-      let imageFile;
-      
-      if (imageUrl.startsWith('http')) {
-        const response = await fetch(imageUrl);
-        imageFile = await response.blob();
-      }
+      formData.append('idCardImage', blob, 'id-card.jpg');
 
-      formData.append('file', imageFile);
-      formData.append('country', 'PK');
-      formData.append('documentType', 'id');
-      formData.append('authenticate', 'true');
-
-      const apiResponse = await fetch('https://api.idanalyzer.com/v1', {
+      const apiResponse = await fetch('http://localhost:5000/api/verify-id', {
         method: 'POST',
-        headers: { 'X-API-KEY': 'OkMWL27f8yb1pULMeGkXWtwhmQiB7xiQ' },
-        body: formData
+        body: formData,
       });
 
       const result = await apiResponse.json();
-      
-      if (result?.authentication?.authentic === true) {
-        toast.success("ID Verified");
+
+      if (!result.success) {
+        throw new Error(result.error || 'Verification failed');
+      }
+
+      if (result.verified) {
+        toast.success("Pakistani ID card verified successfully!");
         return true;
+      } else {
+        toast.error(result.message || "Image unclear or not a Pakistani ID card. Please upload a proper ID card picture.");
+        return false;
       }
     } catch (error) {
-      console.log("API failed, trying fallback verification");
+      console.error("Verification error:", error);
+      toast.error(error.message || "Failed to verify ID card. Please try again.");
+      return false;
+    } finally {
+      setVerifying(false);
     }
+  };
 
-    // 2. Fallback to dimension check
-    const img = new Image();
-    await new Promise((resolve) => {
-      img.onload = resolve;
-      img.src = imageUrl;
-    });
-
-    const aspectRatio = img.width / img.height;
-    const isIDCard = Math.abs(aspectRatio - 1.58) < 0.2;
-
-    if (isIDCard) {
-      toast.success("ID Verified");
-      return true;
-    }
-
-    toast.error("Please upload clear ID card picture");
-    return false;
-
-  } catch (error) {
-    toast.error("Please upload clear ID card picture");
-    return false;
-  } finally {
-    setVerifying(false);
-  }
-};
   // Fetch FIRs for the logged-in user
   useEffect(() => {
     const fetchFirs = async () => {
@@ -268,7 +230,7 @@ const verifyIdCard = async (imageUrl) => {
   };
 
   // Handle ID card upload with verification
-  const handleIdCardUpload = async (e, side) => {
+  const handleIdCardUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -277,31 +239,20 @@ const verifyIdCard = async (imageUrl) => {
 
     setNewFIR(prev => ({
       ...prev,
-      [side === "front" ? "idCardFront" : "idCardBack"]: url,
+      idCardFront: url,
     }));
     
-    setIdCardUploaded(prev => ({ ...prev, [side]: true }));
-    toast.success(`${side === "front" ? "Front" : "Back"} ID uploaded successfully!`);
+    setIdCardUploaded(true);
+    toast.success("Front ID uploaded successfully!");
 
-    // Verify the ID card if both sides are uploaded
-    if ((side === "front" && idCardUploaded.back) || (side === "back" && idCardUploaded.front)) {
-      const frontVerified = side === "front" ? 
-        await verifyIdCard(url) : 
-        await verifyIdCard(newFIR.idCardFront);
-      
-      const backVerified = side === "back" ? 
-        await verifyIdCard(url) : 
-        await verifyIdCard(newFIR.idCardBack);
-
-      const isVerified = frontVerified && backVerified;
-      
-      setNewFIR(prev => ({ ...prev, idVerified: isVerified }));
-      
-      if (isVerified) {
-        toast.success("Pakistani ID card verified successfully!");
-      } else {
-        toast.warning("Could not verify as a valid Pakistani ID card. Please ensure both sides are clear.");
-      }
+    // Verify the ID card
+    const isVerified = await verifyIdCard(url);
+    setNewFIR(prev => ({ ...prev, idVerified: isVerified }));
+    
+    if (isVerified) {
+      toast.success("Pakistani ID card verified successfully!");
+    } else {
+      toast.warning("Could not verify as a valid Pakistani ID card. Please ensure the image is clear.");
     }
   };
 
@@ -374,8 +325,13 @@ const verifyIdCard = async (imageUrl) => {
       return false;
     }
 
-    if (!newFIR.idCardFront || !newFIR.idCardBack) {
-      toast.error("Please upload both front and back of your ID card");
+    if (!newFIR.idCardFront) {
+      toast.error("Please upload the front of your ID card");
+      return false;
+    }
+
+    if (!newFIR.idVerified) {
+      toast.error("Please verify your ID card before submission");
       return false;
     }
 
@@ -397,16 +353,6 @@ const verifyIdCard = async (imageUrl) => {
     if (!user) {
       toast.error("Please log in to submit an FIR.");
       return;
-    }
-
-    // If not verified yet, try verification now
-    if (!newFIR.idVerified) {
-      const isVerified = await verifyIdCard(newFIR.idCardFront);
-      setNewFIR(prev => ({ ...prev, idVerified: isVerified }));
-      if (!isVerified) {
-        toast.warning("Could not verify ID details. Please ensure the images are clear.");
-        return;
-      }
     }
 
     try {
@@ -457,20 +403,25 @@ const verifyIdCard = async (imageUrl) => {
       incidentDescription: "",
       supportingDocuments: [],
       idCardFront: "",
-      idCardBack: "",
       status: "Pending",
       termsAgreed: false,
       userId: "",
       assignedInvestigator: "",
       idVerified: false,
     });
-    setIdCardUploaded({
-      front: false,
-      back: false,
-    });
+    setIdCardUploaded(false);
     setShowForm(false);
     setSelectedInvestigator(null);
     setInvestigatorSpace(null);
+  };
+
+  // Helper function to extract public ID from Cloudinary URL
+  const extractPublicId = (url) => {
+    const parts = url.split("/upload/");
+    if (parts.length > 1) {
+      return parts[1].split(".")[0];
+    }
+    return url;
   };
 
   return (
@@ -592,13 +543,13 @@ const verifyIdCard = async (imageUrl) => {
             {/* ID Card Upload and Verification */}
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">ID Card Verification (Required)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block mb-2">Front Side of ID Card *</label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => handleIdCardUpload(e, "front")}
+                    onChange={handleIdCardUpload}
                     className="w-full p-2 border rounded"
                     required
                     disabled={uploading || verifying}
@@ -611,36 +562,14 @@ const verifyIdCard = async (imageUrl) => {
                       />
                     </div>
                   )}
-                  {!idCardUploaded.front && (
+                  {!idCardUploaded && (
                     <p className="text-red-500 text-sm mt-1">Front ID card is required</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block mb-2">Back Side of ID Card *</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleIdCardUpload(e, "back")}
-                    className="w-full p-2 border rounded"
-                    required
-                    disabled={uploading || verifying}
-                  />
-                  {newFIR.idCardBack && (
-                    <div className="mt-2">
-                      <AdvancedImage
-                        cldImg={cld.image(extractPublicId(newFIR.idCardBack)).resize(auto().gravity(autoGravity()).width(300).height(200))}
-                        className="h-32 object-contain border rounded mx-auto"
-                      />
-                    </div>
-                  )}
-                  {!idCardUploaded.back && (
-                    <p className="text-red-500 text-sm mt-1">Back ID card is required</p>
                   )}
                 </div>
               </div>
               {newFIR.idVerified ? (
-                <p className="text-green-600 mt-2">✓ ID successfully verified</p>
-              ) : idCardUploaded.front && idCardUploaded.back ? (
+                <p className="text-green-600 mt-2">✓ Pakistani ID successfully verified</p>
+              ) : idCardUploaded ? (
                 verifying ? (
                   <p className="text-blue-600 mt-2">Verifying ID, please wait...</p>
                 ) : (
@@ -650,7 +579,7 @@ const verifyIdCard = async (imageUrl) => {
                 )
               ) : (
                 <p className="text-gray-600 mt-2">
-                  Please upload both front and back of your ID card
+                  Please upload the front of your Pakistani ID card
                 </p>
               )}
             </div>
@@ -930,7 +859,7 @@ const verifyIdCard = async (imageUrl) => {
               <button
                 type="submit"
                 className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex-1"
-                disabled={uploading || !idCardUploaded.front || !idCardUploaded.back}
+                disabled={uploading || verifying || !newFIR.idVerified}
               >
                 {uploading ? "Uploading..." : verifying ? "Verifying..." : "Submit FIR"}
               </button>
