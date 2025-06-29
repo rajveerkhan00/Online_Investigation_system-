@@ -8,74 +8,8 @@ import { db, auth } from "../firebase";
 import { collection, getDocs, doc, updateDoc, setDoc, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
-
-const investigationSteps = [
-  {
-    phase: "Phase 1: Case Initiation & Planning",
-    steps: [
-      "Receive Case Assignment – Obtain case details from the client, law enforcement, or agency.",
-      "Understand the Case Type – Determine whether it's a criminal, civil, corporate, or private investigation.",
-      "Review Initial Reports – Analyze any police reports, witness statements, or preliminary evidence.",
-      "Set Investigation Goals – Define the objectives (e.g., prove/disprove a claim, find a missing person, collect forensic evidence).",
-      "Plan Investigation Strategy – Outline steps, allocate resources, and define priorities.",
-      "Gather Background Information – Research the people, locations, and context of the case.",
-      "Identify Key Stakeholders – Determine who is involved (victims, suspects, witnesses, law enforcement).",
-      "Establish Jurisdiction & Legal Boundaries – Ensure legal procedures are followed to avoid invalid evidence.",
-    ],
-  },
-  {
-    phase: "Phase 2: Evidence Collection & Crime Scene Processing",
-    steps: [
-      "Secure the Crime Scene – Prevent contamination and unauthorized access.",
-      "Document the Scene – Take photographs, videos, and notes.",
-      "Collect Physical Evidence – Secure fingerprints, DNA, weapons, documents, etc.",
-      "Examine Digital Evidence – Extract data from computers, phones, and surveillance cameras.",
-      "Interview First Responders – Gather insights from police officers, paramedics, or eyewitnesses.",
-      "Sketch or Reconstruct the Scene – Create diagrams or 3D reconstructions of events.",
-      "Determine Timeframe of Events – Establish a timeline based on evidence and testimonies.",
-      "Check for Witnesses Nearby – Look for surveillance footage or bystanders who may have seen something.",
-    ],
-  },
-  {
-    phase: "Phase 3: Interviews & Intelligence Gathering",
-    steps: [
-      "Interview Victims & Witnesses – Obtain firsthand accounts of the incident.",
-      "Analyze Witness Credibility – Cross-check statements for inconsistencies or bias.",
-      "Develop Suspect Profiles – Use behavioral analysis to identify potential perpetrators.",
-      "Conduct Background Checks – Investigate criminal history, financial records, and affiliations.",
-      "Follow Financial Trails – Examine bank statements, transactions, and assets if fraud is suspected.",
-      "Surveillance & Tracking – Monitor suspect movements using legal tracking methods.",
-      "Gather Informant Tips – Use confidential sources to obtain inside information.",
-      "Analyze Communication Records – Check call logs, messages, emails, and social media activity.",
-      "Conduct Polygraph Tests (if applicable) – Assess suspect honesty using lie detection methods.",
-    ],
-  },
-  {
-    phase: "Phase 4: Analysis & Case Building",
-    steps: [
-      "Compare Evidence & Witness Testimonies – Look for consistencies and contradictions.",
-      "Use Forensic Analysis – Apply ballistics, DNA, handwriting analysis, and toxicology if necessary.",
-      "Establish Motive, Means, and Opportunity – Determine why, how, and when the crime occurred.",
-      "Map Out Connections Between Individuals – Use link analysis to identify relationships.",
-      "Reconstruct the Crime – Use available evidence to create a possible sequence of events.",
-    ],
-  },
-  {
-    phase: "Phase 5: Closing the Case & Reporting",
-    steps: [
-      "Draw Conclusions & Identify the Culprit – Based on solid evidence and logical deductions.",
-      "Prepare an Official Report – Document all findings in a structured manner.",
-      "Present Evidence to Authorities – Work with prosecutors, lawyers, or relevant agencies.",
-      "Ensure Proper Chain of Custody – Maintain records to preserve evidence integrity.",
-      "Testify in Court (if required) – Provide expert analysis and sworn statements.",
-      "Close the Case or Continue Investigation – If sufficient evidence is found, proceed with legal action; if not, continue gathering information.",
-      "Review Investigation for Errors or Missed Leads – Double-check the case before finalizing.",
-      "Store Evidence & Secure Records – Ensure proper archiving for future reference.",
-      "Provide Support to Victims & Witnesses – Offer guidance on legal steps and protection if needed.",
-      "Reflect & Improve Investigation Techniques – Analyze the case for lessons learned and areas of improvement.",
-    ],
-  },
-];
+import ChatIU from "../components/ChatIU";
+import { getInvestigationSteps, saveInvestigationProgress, generateNewSteps } from "../Services/investigationService";
 
 const FIRSubmission = () => {
   const [firs, setFirs] = useState([]);
@@ -85,6 +19,8 @@ const FIRSubmission = () => {
   const [showInvestigationForm, setShowInvestigationForm] = useState(false);
   const [activeCaseId, setActiveCaseId] = useState(null);
   const [investigationData, setInvestigationData] = useState({});
+  const [investigationSteps, setInvestigationSteps] = useState([]);
+  const [stepsSource, setStepsSource] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [sortBy, setSortBy] = useState("date");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -94,43 +30,43 @@ const FIRSubmission = () => {
   const [currentStatus, setCurrentStatus] = useState("");
   const [oldStatus, setOldStatus] = useState("");
   const [showReopenModal, setShowReopenModal] = useState(false);
+  const [generatingSteps, setGeneratingSteps] = useState(false);
+  const [activeCaseType, setActiveCaseType] = useState("");
 
-  // Fetch FIRs assigned to the logged-in investigator
-useEffect(() => {
-  const unsubscribe = auth.onAuthStateChanged(async (user) => {
-    setLoading(true);
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setLoading(true);
 
-    if (!user) {
-      toast.error("Please log in to view your cases.");
-      setLoading(false);
-      return;
-    }
+      if (!user) {
+        toast.error("Please log in to view your cases.");
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const q = query(
-        collection(db, "firs"),
-        where("assignedInvestigator", "==", user.uid)
-      );
+      try {
+        const q = query(
+          collection(db, "firs"),
+          where("assignedInvestigator", "==", user.uid)
+        );
 
-      const querySnapshot = await getDocs(q);
-      const firData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+        const querySnapshot = await getDocs(q);
+        const firData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
 
-      setFirs(firData);
-    } catch (error) {
-      toast.error("Failed to fetch FIRs");
-      console.error("Error fetching FIRs:", error);
-    } finally {
-      setLoading(false);
-    }
-  });
+        setFirs(firData);
+      } catch (error) {
+        toast.error("Failed to fetch FIRs");
+        console.error("Error fetching FIRs:", error);
+      } finally {
+        setLoading(false);
+      }
+    });
 
-  return () => unsubscribe(); // Cleanup listener on unmount
-}, []);
+    return () => unsubscribe();
+  }, []);
 
-  // Fetch investigation data for a specific FIR
   useEffect(() => {
     if (activeCaseId) {
       const fetchInvestigationData = async () => {
@@ -180,7 +116,6 @@ useEffect(() => {
         [`${currentStatus.toLowerCase()}Reason`]: reasonText
       };
 
-      // Remove old reason if it exists
       if (oldStatus === "Rejected") {
         updateData.rejectedReason = null;
       } else if (oldStatus === "UnSolved") {
@@ -197,7 +132,6 @@ useEffect(() => {
               status: currentStatus,
               [`${currentStatus.toLowerCase()}Reason`]: reasonText
             };
-            // Remove old reason from local state
             if (oldStatus === "Rejected") {
               delete updatedFir.rejectedReason;
             } else if (oldStatus === "UnSolved") {
@@ -227,7 +161,7 @@ useEffect(() => {
       await updateDoc(doc(db, "firs", currentCaseId), {
         status: "Active",
         reopenReason: reasonText,
-        unsolvedReason: null // Clear the unsolved reason if it exists
+        unsolvedReason: null
       });
 
       setFirs((prev) =>
@@ -238,7 +172,6 @@ useEffect(() => {
               status: "Active",
               reopenReason: reasonText
             };
-            // Remove unsolved reason from local state
             delete updatedFir.unsolvedReason;
             return updatedFir;
           }
@@ -254,9 +187,42 @@ useEffect(() => {
     }
   };
 
-  const handleStartSolvingCase = (firId) => {
+  const handleStartSolvingCase = async (firId, incidentType) => {
     setActiveCaseId(firId);
-    setShowInvestigationForm(true);
+    setActiveCaseType(incidentType);
+    try {
+      setLoading(true);
+      const { steps, source } = await getInvestigationSteps(firId, incidentType);
+      setInvestigationSteps(steps);
+      setStepsSource(source);
+      setShowInvestigationForm(true);
+    } catch (error) {
+      toast.error("Failed to load investigation steps");
+      console.error("Error loading investigation steps:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateNewSteps = async () => {
+    try {
+      setGeneratingSteps(true);
+      const { steps, source, error } = await generateNewSteps(activeCaseType);
+      
+      if (error) {
+        toast.error(`Failed to generate steps: ${error}`);
+        return;
+      }
+
+      setInvestigationSteps(steps);
+      setStepsSource(source);
+      toast.success("Successfully generated new investigation steps");
+    } catch (error) {
+      console.error("Error generating new steps:", error);
+      toast.error(`Failed to generate steps: ${error.message}`);
+    } finally {
+      setGeneratingSteps(false);
+    }
   };
 
   const handleInputChange = (phaseIndex, stepIndex, value) => {
@@ -267,24 +233,27 @@ useEffect(() => {
   };
 
   const calculateProgress = () => {
+    if (!investigationSteps.length) return 0;
+    
     let completedSteps = 0;
+    let totalSteps = 0;
+    
     investigationSteps.forEach((phase, phaseIndex) => {
       phase.steps.forEach((_, stepIndex) => {
+        totalSteps++;
         if (investigationData[phaseIndex]?.[stepIndex]) {
           completedSteps++;
         }
       });
     });
-    return (completedSteps / 40) * 100;
+    
+    return totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
   };
 
   const handleSaveInvestigation = async () => {
     setSaveLoading(true);
     try {
-      await setDoc(doc(db, "investigations", activeCaseId), {
-        firId: activeCaseId,
-        data: investigationData,
-      });
+      await saveInvestigationProgress(activeCaseId, investigationData);
 
       const progress = calculateProgress();
       if (progress === 100) {
@@ -315,7 +284,6 @@ useEffect(() => {
     try {
       const updateData = { status: newStatus };
       
-      // Remove old reason fields if they exist
       if (oldStatus === "Rejected") {
         updateData.rejectedReason = null;
       } else if (oldStatus === "UnSolved") {
@@ -328,7 +296,6 @@ useEffect(() => {
         prev.map((f) => {
           if (f.id === firId) {
             const updatedFir = { ...f, status: newStatus };
-            // Remove old reason from local state
             if (oldStatus === "Rejected") {
               delete updatedFir.rejectedReason;
             } else if (oldStatus === "UnSolved") {
@@ -375,7 +342,7 @@ useEffect(() => {
   };
 
   const sortFirs = (firs, sortBy) => {
-    return firs.sort((a, b) => {
+    return [...firs].sort((a, b) => {
       if (sortBy === "date") {
         return new Date(a.incidentDateTime) - new Date(b.incidentDateTime);
       } else if (sortBy === "priority") {
@@ -407,7 +374,7 @@ useEffect(() => {
         </p>
         <p className="text-gray-600 truncate">{fir.incidentDescription}</p>
         <div className="mt-4 flex space-x-2">
-          {fir.supportingDocuments.map((url, index) => (
+          {fir.supportingDocuments?.map((url, index) => (
             <img
               key={index}
               src={url}
@@ -417,7 +384,6 @@ useEffect(() => {
           ))}
         </div>
         
-        {/* Display reason if available */}
         {(fir.status === "Rejected" || fir.status === "UnSolved") && fir[`${fir.status.toLowerCase()}Reason`] && (
           <div className="mt-4 p-3 bg-gray-100 rounded">
             <p className="font-semibold">{fir.status} Reason:</p>
@@ -425,7 +391,6 @@ useEffect(() => {
           </div>
         )}
         
-        {/* Display reopen reason if available */}
         {fir.reopenReason && (
           <div className="mt-4 p-3 bg-blue-100 rounded">
             <p className="font-semibold">Reopen Reason:</p>
@@ -442,7 +407,7 @@ useEffect(() => {
           </button>
           {fir.status === "Active" && (
             <button
-              onClick={() => handleStartSolvingCase(fir.id)}
+              onClick={() => handleStartSolvingCase(fir.id, fir.incidentType)}
               className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
             >
               Start Solving Case
@@ -462,7 +427,6 @@ useEffect(() => {
             <option value="Rejected">Rejected</option>
           </select>
         </div>
-        {/* Add Reopen Case button for Unsolved cases */}
         {fir.status === "UnSolved" && (
           <div className="mt-4">
             <button
@@ -481,6 +445,7 @@ useEffect(() => {
     <div className="min-h-screen flex flex-col bg-gray-300">
       <Headeri />
       <Navbari />
+      <ChatIU />
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -488,7 +453,6 @@ useEffect(() => {
           FIR Cases Management System
         </h1>
         
-        {/* Sort Dropdown */}
         <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
           <div className="relative w-40 sm:w-20">
             <button
@@ -524,23 +488,23 @@ useEffect(() => {
         </div>
         
         <div className="mt-12">
-        
-
-          {/* Active Cases Section */}
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
               Active Cases ({firs.filter((f) => f.status === "Active").length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderFIRsByStatus("Active")}
-            </div>
+            {loading ? (
+              <div className="flex justify-center">
+                <TailSpin color="#6366f1" height={50} width={50} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {renderFIRsByStatus("Active")}
+              </div>
+            )}
           </div>
-
-          
         </div>
       </main>
 
-      {/* Reason Input Modal */}
       {showReasonModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
@@ -570,7 +534,6 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Reopen Case Modal */}
       {showReopenModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
@@ -600,62 +563,105 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Investigation Form Modal */}
       {showInvestigationForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative pb-20">
             <h2 className="text-2xl font-bold mb-6">Investigation Form</h2>
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">
-                Progress: {calculateProgress().toFixed(2)}%
-              </h3>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${calculateProgress()}%` }}
-                ></div>
+            {loading ? (
+              <div className="flex justify-center">
+                <TailSpin color="#6366f1" height={50} width={50} />
               </div>
-            </div>
-            {investigationSteps.map((phase, phaseIndex) => (
-              <div key={phaseIndex} className="mb-6">
-                <h3 className="text-xl font-semibold mb-4">{phase.phase}</h3>
-                {phase.steps.map((step, stepIndex) => (
-                  <div key={stepIndex} className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {step}
-                    </label>
-                    <textarea
-                      value={investigationData[phaseIndex]?.[stepIndex] || ""}
-                      onChange={(e) =>
-                        handleInputChange(phaseIndex, stepIndex, e.target.value)
-                      }
-                      className="mt-1 p-2 w-full border rounded-md"
-                      rows={3}
-                    />
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">
+                      Progress: {calculateProgress().toFixed(2)}%
+                    </h3>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${calculateProgress()}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  {stepsSource === "default" && (
+                    <button
+                      onClick={handleGenerateNewSteps}
+                      disabled={generatingSteps}
+                      className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 flex items-center"
+                    >
+                      {generatingSteps ? (
+                        <>
+                          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
+                          Generating...
+                        </>
+                      ) : (
+                        "Generate New Steps"
+                      )}
+                    </button>
+                  )}
+                </div>
+                <div className="mb-4 p-3 bg-blue-50 rounded">
+                  <p className="text-sm text-blue-800">
+                    {stepsSource === "generated" 
+                      ? "These steps were dynamically generated for this case type." 
+                      : stepsSource === "default" 
+                        ? "Using default investigation steps (could not generate specific steps)." 
+                        : "Loading investigation steps..."}
+                  </p>
+                </div>
+                {investigationSteps.map((phase, phaseIndex) => (
+                  <div key={phaseIndex} className="mb-6">
+                    <h3 className="text-xl font-semibold mb-4">{phase.phase}</h3>
+                    {phase.steps.map((step, stepIndex) => (
+                      <div key={stepIndex} className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {step}
+                        </label>
+                        <textarea
+                          value={investigationData[phaseIndex]?.[stepIndex] || ""}
+                          onChange={(e) =>
+                            handleInputChange(phaseIndex, stepIndex, e.target.value)
+                          }
+                          className="mt-1 p-2 w-full border rounded-md"
+                          rows={3}
+                        />
+                      </div>
+                    ))}
                   </div>
                 ))}
-              </div>
-            ))}
-            <div className="flex justify-end">
-              <button
-                onClick={handleSaveInvestigation}
-                disabled={saveLoading}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                {saveLoading ? "Saving..." : "Save Investigation"}
-              </button>
-              <button
-                onClick={() => setShowInvestigationForm(false)}
-                className="ml-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Close
-              </button>
-            </div>
+                
+                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+                  <div className="flex items-center space-x-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+                    <button
+                      onClick={() => setShowInvestigationForm(false)}
+                      className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveInvestigation}
+                      disabled={saveLoading}
+                      className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
+                    >
+                      {saveLoading ? (
+                        <>
+                          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Investigation"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* FIR Details Modal */}
       {showModal && selectedFIR && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -691,49 +697,49 @@ useEffect(() => {
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Location Details</h3>
               <p>
-                <strong>Address:</strong> {selectedFIR.incidentLocation.address}
+                <strong>Address:</strong> {selectedFIR.incidentLocation?.address}
               </p>
               <p>
-                <strong>City:</strong> {selectedFIR.incidentLocation.city}
+                <strong>City:</strong> {selectedFIR.incidentLocation?.city}
               </p>
               <p>
-                <strong>State:</strong> {selectedFIR.incidentLocation.state}
+                <strong>State:</strong> {selectedFIR.incidentLocation?.state}
               </p>
               <p>
                 <strong>GPS Coordinates:</strong>{" "}
-                {selectedFIR.incidentLocation.gpsCoordinates}
+                {selectedFIR.incidentLocation?.gpsCoordinates}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Suspect Information</h3>
               <p>
-                <strong>Name:</strong> {selectedFIR.suspectDetails.name}
+                <strong>Name:</strong> {selectedFIR.suspectDetails?.name}
               </p>
               <p>
                 <strong>Description:</strong>{" "}
-                {selectedFIR.suspectDetails.description}
+                {selectedFIR.suspectDetails?.description}
               </p>
               <p>
                 <strong>Known Address:</strong>{" "}
-                {selectedFIR.suspectDetails.knownAddress}
+                {selectedFIR.suspectDetails?.knownAddress}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Witness Information</h3>
               <p>
-                <strong>Name:</strong> {selectedFIR.witnessDetails.name}
+                <strong>Name:</strong> {selectedFIR.witnessDetails?.name}
               </p>
               <p>
-                <strong>Contact:</strong> {selectedFIR.witnessDetails.contact}
+                <strong>Contact:</strong> {selectedFIR.witnessDetails?.contact}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Supporting Documents</h3>
               <div className="space-y-2">
-                {selectedFIR.supportingDocuments.map((url, index) => (
+                {selectedFIR.supportingDocuments?.map((url, index) => (
                   <div key={index} className="text-blue-600">
                     <a href={url} target="_blank" rel="noopener noreferrer">
                       Document {index + 1}
@@ -752,7 +758,6 @@ useEffect(() => {
           </div>
         </div>
       )}
-
       <Footer />
     </div>
   );

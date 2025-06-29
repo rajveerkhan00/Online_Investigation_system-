@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { db, auth } from "../firebase";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
-import Chatbot from "../components/Chatbot";
+import Chatbot from "../components/ChatBotUI";
 import { AdvancedImage } from "@cloudinary/react";
 import { Cloudinary } from "@cloudinary/url-gen";
 import { auto } from "@cloudinary/url-gen/actions/resize";

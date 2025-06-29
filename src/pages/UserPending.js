@@ -7,7 +7,7 @@ import Navbar from "../components/Navbar";
 import { db, auth } from "../firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
-import Chatbot from "../components/Chatbot";
+import Chatbot from "../components/ChatBotUI";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
 
 const investigationSteps = [

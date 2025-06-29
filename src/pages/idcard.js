@@ -2,6 +2,11 @@
 
 import React, { useState } from "react";
 import Tesseract from "tesseract.js";
+import ChatIU from "../components/ChatWindow";
+import ChatUII from "../components/Sidebar";
+import ChatBotUI from "../components/ChatBotUI";
+
+
 
 export default function CnicPage() {
   const [text, setText] = useState("");
@@ -32,7 +37,11 @@ export default function CnicPage() {
   };
 
   return (
+    
     <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
+    <ChatBotUI />
+    
+    
       <h1 style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>
         CNIC Text Extractor (English + Urdu)
       </h1>
