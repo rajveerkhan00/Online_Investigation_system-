@@ -5,5 +5,21 @@
     50% {
         transform: scale(0.8); /* Adjust zoom level */
     }
+    
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
 }
 
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #fefce8;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #fef08a;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #facc15;
+}

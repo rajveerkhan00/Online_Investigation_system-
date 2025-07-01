@@ -310,8 +310,8 @@ const FIRSubmission = () => {
       return false;
     }
 
-    if (!/^\d{10}$/.test(newFIR.contactNumber)) {
-      toast.error("Invalid contact number (must be 10 digits)");
+    if (!/^\d{11}$/.test(newFIR.contactNumber)) {
+      toast.error("Invalid contact number (must be 11 digits)");
       return false;
     }
 
@@ -521,9 +521,9 @@ const FIRSubmission = () => {
                     name="contactNumber"
                     value={newFIR.contactNumber}
                     onChange={handleChange}
-                    placeholder="Contact Number *"
+                    placeholder="Contact Number  11 digits*"
                     className="w-full p-2 border rounded"
-                    pattern="\d{10}"
+                    pattern="\d{11}"
                     required
                   />
                 </div>

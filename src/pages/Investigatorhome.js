@@ -8,8 +8,9 @@ import { db, auth } from "../firebase";
 import { collection, getDocs, doc, updateDoc, setDoc, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
-import ChatIU from "../components/ChatIU";
+import InveNot from "../components/InveNot";
 import { getInvestigationSteps, saveInvestigationProgress, generateNewSteps } from "../Services/investigationService";
+import { useNavigate } from "react-router-dom";
 
 const FIRSubmission = () => {
   const [firs, setFirs] = useState([]);
@@ -32,13 +33,70 @@ const FIRSubmission = () => {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [generatingSteps, setGeneratingSteps] = useState(false);
   const [activeCaseType, setActiveCaseType] = useState("");
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const navigate = useNavigate();
+
+  // Session timeout functionality
+  useEffect(() => {
+    const checkAuthState = () => {
+      const currentTime = Date.now();
+      const inactiveTime = currentTime - lastActivity;
+      const timeoutDuration = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+      if (inactiveTime > timeoutDuration) {
+        // User has been inactive for more than 5 minutes
+        auth.signOut().then(() => {
+          toast.info("Session expired due to inactivity. Please log in again.");
+          navigate("/investigator/login");
+        });
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Tab is active again, check if we need to log out
+        checkAuthState();
+      } else {
+        // Tab is inactive, update last activity time
+        setLastActivity(Date.now());
+      }
+    };
+
+    const handleActivity = () => {
+      setLastActivity(Date.now());
+    };
+
+    // Set up event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    window.addEventListener('click', handleActivity);
+
+    // Check auth state every minute
+    const interval = setInterval(checkAuthState, 60 * 1000);
+
+    return () => {
+      // Clean up event listeners
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      clearInterval(interval);
+    };
+  }, [lastActivity, navigate]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setLoading(true);
 
       if (!user) {
-        toast.error("Please log in to view your cases.");
+        // Only redirect if this is not a page reload
+        if (performance.navigation.type !== performance.navigation.TYPE_RELOAD) {
+          toast.error("Please log in to view your cases.");
+          navigate("/user/login");
+        }
         setLoading(false);
         return;
       }
@@ -65,7 +123,7 @@ const FIRSubmission = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (activeCaseId) {
@@ -76,7 +134,7 @@ const FIRSubmission = () => {
             (doc) => doc.data().firId === activeCaseId
           );
           if (investigationData) {
-            setInvestigationData(investigationData.data().data);
+            setInvestigationData(investigationData.data().data || {});
           } else {
             setInvestigationData({});
           }
@@ -193,6 +251,9 @@ const FIRSubmission = () => {
     try {
       setLoading(true);
       const { steps, source } = await getInvestigationSteps(firId, incidentType);
+      if (!steps || !Array.isArray(steps)) {
+        throw new Error("Invalid steps data received");
+      }
       setInvestigationSteps(steps);
       setStepsSource(source);
       setShowInvestigationForm(true);
@@ -207,11 +268,10 @@ const FIRSubmission = () => {
   const handleGenerateNewSteps = async () => {
     try {
       setGeneratingSteps(true);
-      const { steps, source, error } = await generateNewSteps(activeCaseType);
+      const { steps, source, error } = await generateNewSteps(activeCaseId, activeCaseType);
       
-      if (error) {
-        toast.error(`Failed to generate steps: ${error}`);
-        return;
+      if (error || !steps || !Array.isArray(steps)) {
+        throw new Error(error || "Invalid steps data received");
       }
 
       setInvestigationSteps(steps);
@@ -233,21 +293,23 @@ const FIRSubmission = () => {
   };
 
   const calculateProgress = () => {
-    if (!investigationSteps.length) return 0;
+    if (!investigationSteps || !Array.isArray(investigationSteps)) return 0;
     
     let completedSteps = 0;
     let totalSteps = 0;
-    
+
     investigationSteps.forEach((phase, phaseIndex) => {
-      phase.steps.forEach((_, stepIndex) => {
-        totalSteps++;
-        if (investigationData[phaseIndex]?.[stepIndex]) {
-          completedSteps++;
-        }
-      });
+      if (phase?.steps && Array.isArray(phase.steps)) {
+        phase.steps.forEach((_, stepIndex) => {
+          totalSteps++;
+          if (investigationData?.[phaseIndex]?.[stepIndex]) {
+            completedSteps++;
+          }
+        });
+      }
     });
-    
-    return totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+
+    return totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
   };
 
   const handleSaveInvestigation = async () => {
@@ -342,37 +404,43 @@ const FIRSubmission = () => {
   };
 
   const sortFirs = (firs, sortBy) => {
+    if (!firs || !Array.isArray(firs)) return [];
+    
     return [...firs].sort((a, b) => {
       if (sortBy === "date") {
-        return new Date(a.incidentDateTime) - new Date(b.incidentDateTime);
+        return new Date(a.incidentDateTime || 0) - new Date(b.incidentDateTime || 0);
       } else if (sortBy === "priority") {
-        return a.priority - b.priority;
+        return (a.priority || 0) - (b.priority || 0);
       }
       return 0;
     });
   };
 
   const renderFIRsByStatus = (status) => {
-    const filteredFirs = firs.filter((fir) => fir.status === status);
+    const filteredFirs = firs.filter((fir) => fir?.status === status);
     const sortedFirs = sortFirs(filteredFirs, sortBy);
+
+    if (sortedFirs.length === 0) {
+      return <div className="text-gray-500">No {status} cases found</div>;
+    }
 
     return sortedFirs.map((fir) => (
       <div key={fir.id} className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-lg font-semibold">{fir.complainantName}</h3>
-            <p className="text-sm text-gray-600">{fir.incidentType}</p>
+            <h3 className="text-lg font-semibold">{fir.complainantName || 'N/A'}</h3>
+            <p className="text-sm text-gray-600">{fir.incidentType || 'N/A'}</p>
           </div>
           <span
             className={`px-3 py-1 rounded-full text-sm ${getStatusColor(fir.status)}`}
           >
-            {fir.status}
+            {fir.status || 'N/A'}
           </span>
         </div>
         <p className="text-gray-700 mb-2">
-          {new Date(fir.incidentDateTime).toLocaleString()}
+          {fir.incidentDateTime ? new Date(fir.incidentDateTime).toLocaleString() : 'N/A'}
         </p>
-        <p className="text-gray-600 truncate">{fir.incidentDescription}</p>
+        <p className="text-gray-600 truncate">{fir.incidentDescription || 'No description'}</p>
         <div className="mt-4 flex space-x-2">
           {fir.supportingDocuments?.map((url, index) => (
             <img
@@ -380,6 +448,10 @@ const FIRSubmission = () => {
               src={url}
               alt={`Document ${index + 1}`}
               className="w-16 h-16 object-cover rounded"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "https://via.placeholder.com/64?text=Document";
+              }}
             />
           ))}
         </div>
@@ -416,7 +488,7 @@ const FIRSubmission = () => {
         </div>
         <div className="mt-4">
           <select
-            value={fir.status}
+            value={fir.status || ''}
             onChange={(e) => handleChangeStatus(fir.id, e.target.value, fir.status)}
             className="p-2 border rounded"
           >
@@ -445,7 +517,7 @@ const FIRSubmission = () => {
     <div className="min-h-screen flex flex-col bg-gray-300">
       <Headeri />
       <Navbari />
-      <ChatIU />
+      <InveNot />
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -490,7 +562,7 @@ const FIRSubmission = () => {
         <div className="mt-12">
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Pending Cases ({firs.filter((f) => f.status === "Pending").length})
+              Pending Cases ({firs.filter((f) => f?.status === "Pending").length})
             </h2>
             {loading ? (
               <div className="flex justify-center">
@@ -505,7 +577,7 @@ const FIRSubmission = () => {
 
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Active Cases ({firs.filter((f) => f.status === "Active").length})
+              Active Cases ({firs.filter((f) => f?.status === "Active").length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {renderFIRsByStatus("Active")}
@@ -514,7 +586,7 @@ const FIRSubmission = () => {
 
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Solved Cases ({firs.filter((f) => f.status === "Solved").length})
+              Solved Cases ({firs.filter((f) => f?.status === "Solved").length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {renderFIRsByStatus("Solved")}
@@ -523,7 +595,7 @@ const FIRSubmission = () => {
 
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              UnSolved Cases ({firs.filter((f) => f.status === "UnSolved").length})
+              UnSolved Cases ({firs.filter((f) => f?.status === "UnSolved").length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {renderFIRsByStatus("UnSolved")}
@@ -532,7 +604,7 @@ const FIRSubmission = () => {
 
           <div className="mb-12">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Rejected Cases ({firs.filter((f) => f.status === "Rejected").length})
+              Rejected Cases ({firs.filter((f) => f?.status === "Rejected").length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {renderFIRsByStatus("Rejected")}
@@ -649,11 +721,11 @@ const FIRSubmission = () => {
                 </div>
                 {investigationSteps.map((phase, phaseIndex) => (
                   <div key={phaseIndex} className="mb-6">
-                    <h3 className="text-xl font-semibold mb-4">{phase.phase}</h3>
-                    {phase.steps.map((step, stepIndex) => (
+                    <h3 className="text-xl font-semibold mb-4">{phase?.phase || `Phase ${phaseIndex + 1}`}</h3>
+                    {phase?.steps?.map((step, stepIndex) => (
                       <div key={stepIndex} className="mb-4">
                         <label className="block text-sm font-medium text-gray-700">
-                          {step}
+                          {step || `Step ${stepIndex + 1}`}
                         </label>
                         <textarea
                           value={investigationData[phaseIndex]?.[stepIndex] || ""}
@@ -669,30 +741,29 @@ const FIRSubmission = () => {
                 ))}
                 
                 <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-  <div className="flex items-center space-x-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-    <button
-      onClick={() => setShowInvestigationForm(false)}
-      className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-    >
-      Cancel
-    </button>
-    <button
-      onClick={handleSaveInvestigation}
-      disabled={saveLoading}
-      className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
-    >
-      {saveLoading ? (
-        <>
-          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
-          Saving...
-        </>
-      ) : (
-        "Save Investigation"
-      )}
-    </button>
-  </div>
-</div>
-
+                  <div className="flex items-center space-x-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+                    <button
+                      onClick={() => setShowInvestigationForm(false)}
+                      className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveInvestigation}
+                      disabled={saveLoading}
+                      className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
+                    >
+                      {saveLoading ? (
+                        <>
+                          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Investigation"
+                      )}
+                    </button>
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -707,82 +778,86 @@ const FIRSubmission = () => {
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Complainant Information</h3>
               <p>
-                <strong>Name:</strong> {selectedFIR.complainantName}
+                <strong>Name:</strong> {selectedFIR.complainantName || 'N/A'}
               </p>
               <p>
-                <strong>Contact Number:</strong> {selectedFIR.contactNumber}
+                <strong>Contact Number:</strong> {selectedFIR.contactNumber || 'N/A'}
               </p>
               <p>
-                <strong>Email:</strong> {selectedFIR.email}
+                <strong>Email:</strong> {selectedFIR.email || 'N/A'}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Incident Details</h3>
               <p>
-                <strong>Type:</strong> {selectedFIR.incidentType}
+                <strong>Type:</strong> {selectedFIR.incidentType || 'N/A'}
               </p>
               <p>
                 <strong>Date & Time:</strong>{" "}
-                {new Date(selectedFIR.incidentDateTime).toLocaleString()}
+                {selectedFIR.incidentDateTime ? new Date(selectedFIR.incidentDateTime).toLocaleString() : 'N/A'}
               </p>
               <p>
-                <strong>Description:</strong> {selectedFIR.incidentDescription}
+                <strong>Description:</strong> {selectedFIR.incidentDescription || 'N/A'}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Location Details</h3>
               <p>
-                <strong>Address:</strong> {selectedFIR.incidentLocation?.address}
+                <strong>Address:</strong> {selectedFIR.incidentLocation?.address || 'N/A'}
               </p>
               <p>
-                <strong>City:</strong> {selectedFIR.incidentLocation?.city}
+                <strong>City:</strong> {selectedFIR.incidentLocation?.city || 'N/A'}
               </p>
               <p>
-                <strong>State:</strong> {selectedFIR.incidentLocation?.state}
+                <strong>State:</strong> {selectedFIR.incidentLocation?.state || 'N/A'}
               </p>
               <p>
                 <strong>GPS Coordinates:</strong>{" "}
-                {selectedFIR.incidentLocation?.gpsCoordinates}
+                {selectedFIR.incidentLocation?.gpsCoordinates || 'N/A'}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Suspect Information</h3>
               <p>
-                <strong>Name:</strong> {selectedFIR.suspectDetails?.name}
+                <strong>Name:</strong> {selectedFIR.suspectDetails?.name || 'N/A'}
               </p>
               <p>
                 <strong>Description:</strong>{" "}
-                {selectedFIR.suspectDetails?.description}
+                {selectedFIR.suspectDetails?.description || 'N/A'}
               </p>
               <p>
                 <strong>Known Address:</strong>{" "}
-                {selectedFIR.suspectDetails?.knownAddress}
+                {selectedFIR.suspectDetails?.knownAddress || 'N/A'}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Witness Information</h3>
               <p>
-                <strong>Name:</strong> {selectedFIR.witnessDetails?.name}
+                <strong>Name:</strong> {selectedFIR.witnessDetails?.name || 'N/A'}
               </p>
               <p>
-                <strong>Contact:</strong> {selectedFIR.witnessDetails?.contact}
+                <strong>Contact:</strong> {selectedFIR.witnessDetails?.contact || 'N/A'}
               </p>
             </div>
 
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Supporting Documents</h3>
               <div className="space-y-2">
-                {selectedFIR.supportingDocuments?.map((url, index) => (
-                  <div key={index} className="text-blue-600">
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      Document {index + 1}
-                    </a>
-                  </div>
-                ))}
+                {selectedFIR.supportingDocuments?.length > 0 ? (
+                  selectedFIR.supportingDocuments.map((url, index) => (
+                    <div key={index} className="text-blue-600">
+                      <a href={url} target="_blank" rel="noopener noreferrer">
+                        Document {index + 1}
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <p>No supporting documents</p>
+                )}
               </div>
             </div>
 

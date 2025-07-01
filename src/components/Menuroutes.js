@@ -34,6 +34,7 @@ import IUnsolvedFir from '../pages/UnsolvedFir';
 import UserChat from '../pages/UserChat';
 import InvestigatorChat from '../pages/InvestigatorChat';
 import Id from '../pages/idcard';
+import TInvestigators from './TInvestigators';
 
 
 
@@ -78,6 +79,8 @@ export default function Menuroutes() {
           <Route path="/User/Chat" element={<UserChat />} />
           <Route path="/Investigator/Chat" element={<InvestigatorChat />} />
           <Route path="/Idcard" element={<Id />} />
+          <Route path="/Admin/Total/Investigators" element={<TInvestigators />} />
+          
       
           
           {/* 

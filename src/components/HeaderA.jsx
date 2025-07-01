@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Eye, Home } from "lucide-react";
+import { LayoutDashboard, Eye, Home, Bell } from "lucide-react";
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -46,12 +46,23 @@ function Header() {
         </button>
       </div>
 
+      
+
       {/* Header Buttons */}
       <div
         className={`${
           isMenuOpen ? "flex flex-col" : "hidden"
         } md:flex md:flex-row md:items-center absolute md:relative right-0 top-full bg-gray-200 md:bg-transparent shadow-md md:shadow-none p-2 md:p-0 space-y-2 md:space-y-0 md:space-x-4 rounded-lg w-auto`}
       >
+
+         {/* Showing page */}
+        <button className="flex items-center space-x-2 text-red-600 font-semibold hover:text-gray-500 transition focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 p-2 rounded-md">
+          <Bell className="h-5 w-5" /> {/* New Icon */}
+          <Link to="/Admin/Home" className="font-bold text-sm">
+            Requests
+          </Link>
+        </button>
+
         {/* Showing page */}
         <button className="flex items-center space-x-2 text-gray-600 font-semibold hover:text-gray-500 transition focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 p-2 rounded-md">
           <Eye className="h-5 w-5" /> {/* New Icon */}

@@ -2,7 +2,6 @@ import { db } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { generateInvestigationSteps } from "./api";
 
-// ... (keep the DEFAULT_INVESTIGATION_STEPS array exactly as before)
 const DEFAULT_INVESTIGATION_STEPS = [
   {
     phase: "Phase 1: Case Initiation & Planning",
@@ -79,7 +78,8 @@ export const getInvestigationSteps = async (caseId, incidentType) => {
     if (investigationDoc.exists()) {
       return {
         steps: investigationDoc.data().steps,
-        source: investigationDoc.data().isDefault ? "default" : "generated"
+        source: investigationDoc.data().isDefault ? "default" : "generated",
+        firId: investigationDoc.data().firId || null
       };
     }
 
@@ -91,13 +91,15 @@ export const getInvestigationSteps = async (caseId, incidentType) => {
         // Save the generated steps for future use
         await setDoc(doc(db, "investigations", incidentType), {
           steps: generatedSteps,
+          firId: caseId,
           createdAt: new Date(),
           isDefault: false,
           lastGenerated: new Date()
         });
         return {
           steps: generatedSteps,
-          source: "generated"
+          source: "generated",
+          firId: caseId
         };
       }
     } catch (error) {
@@ -105,6 +107,7 @@ export const getInvestigationSteps = async (caseId, incidentType) => {
       // Save error information for debugging
       await setDoc(doc(db, "generationErrors", `${incidentType}_${Date.now()}`), {
         incidentType,
+        firId: caseId,
         error: error.message,
         timestamp: new Date()
       });
@@ -113,6 +116,7 @@ export const getInvestigationSteps = async (caseId, incidentType) => {
     // Fall back to default steps if generation fails
     await setDoc(doc(db, "investigations", incidentType), {
       steps: DEFAULT_INVESTIGATION_STEPS,
+      firId: caseId,
       isDefault: true,
       createdAt: new Date(),
       usedDefault: true
@@ -120,32 +124,36 @@ export const getInvestigationSteps = async (caseId, incidentType) => {
     
     return {
       steps: DEFAULT_INVESTIGATION_STEPS,
-      source: "default"
+      source: "default",
+      firId: caseId
     };
   } catch (error) {
     console.error("Error getting investigation steps:", error);
     return {
       steps: DEFAULT_INVESTIGATION_STEPS,
       source: "default",
+      firId: caseId,
       error: error.message
     };
   }
 };
 
-export const generateNewSteps = async (incidentType) => {
+export const generateNewSteps = async (caseId, incidentType) => {
   try {
     const generatedSteps = await generateInvestigationSteps(incidentType);
     
     if (generatedSteps && generatedSteps.length > 0) {
       await setDoc(doc(db, "investigations", incidentType), {
         steps: generatedSteps,
+        firId: caseId,
         createdAt: new Date(),
         isDefault: false,
         lastGenerated: new Date()
       });
       return {
         steps: generatedSteps,
-        source: "generated"
+        source: "generated",
+        firId: caseId
       };
     }
     throw new Error("Failed to generate steps: empty response");
@@ -154,6 +162,7 @@ export const generateNewSteps = async (incidentType) => {
     // Save error information for debugging
     await setDoc(doc(db, "generationErrors", `${incidentType}_${Date.now()}`), {
       incidentType,
+      firId: caseId,
       error: error.message,
       timestamp: new Date(),
       action: "manual-regeneration"
@@ -161,8 +170,6 @@ export const generateNewSteps = async (incidentType) => {
     throw error;
   }
 };
-
-// ... (keep saveInvestigationProgress function exactly as before)
 
 export const saveInvestigationProgress = async (caseId, data) => {
   try {
@@ -177,3 +184,4 @@ export const saveInvestigationProgress = async (caseId, data) => {
     throw error;
   }
 };
+

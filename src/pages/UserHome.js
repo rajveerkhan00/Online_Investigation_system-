@@ -5,12 +5,15 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { db, auth } from "../firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
 import Chatbot from "../components/ChatBotUI";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
+import { getInvestigationSteps } from "../Services/investigationService";
+import useAuthTimeout from "../hooks/useAuthTimeout";
+import { useNavigate } from "react-router-dom";
 
-const investigationSteps = [
+const DEFAULT_INVESTIGATION_STEPS = [
   {
     phase: "Phase 1: Case Initiation & Planning",
     steps: [
@@ -24,67 +27,21 @@ const investigationSteps = [
       "Establish Jurisdiction & Legal Boundaries – Ensure legal procedures are followed to avoid invalid evidence.",
     ],
   },
-  {
-    phase: "Phase 2: Evidence Collection & Crime Scene Processing",
-    steps: [
-      "Secure the Crime Scene – Prevent contamination and unauthorized access.",
-      "Document the Scene – Take photographs, videos, and notes.",
-      "Collect Physical Evidence – Secure fingerprints, DNA, weapons, documents, etc.",
-      "Examine Digital Evidence – Extract data from computers, phones, and surveillance cameras.",
-      "Interview First Responders – Gather insights from police officers, paramedics, or eyewitnesses.",
-      "Sketch or Reconstruct the Scene – Create diagrams or 3D reconstructions of events.",
-      "Determine Timeframe of Events – Establish a timeline based on evidence and testimonies.",
-      "Check for Witnesses Nearby – Look for surveillance footage or bystanders who may have seen something.",
-    ],
-  },
-  {
-    phase: "Phase 3: Interviews & Intelligence Gathering",
-    steps: [
-      "Interview Victims & Witnesses – Obtain firsthand accounts of the incident.",
-      "Analyze Witness Credibility – Cross-check statements for inconsistencies or bias.",
-      "Develop Suspect Profiles – Use behavioral analysis to identify potential perpetrators.",
-      "Conduct Background Checks – Investigate criminal history, financial records, and affiliations.",
-      "Follow Financial Trails – Examine bank statements, transactions, and assets if fraud is suspected.",
-      "Surveillance & Tracking – Monitor suspect movements using legal tracking methods.",
-      "Gather Informant Tips – Use confidential sources to obtain inside information.",
-      "Analyze Communication Records – Check call logs, messages, emails, and social media activity.",
-      "Conduct Polygraph Tests (if applicable) – Assess suspect honesty using lie detection methods.",
-    ],
-  },
-  {
-    phase: "Phase 4: Analysis & Case Building",
-    steps: [
-      "Compare Evidence & Witness Testimonies – Look for consistencies and contradictions.",
-      "Use Forensic Analysis – Apply ballistics, DNA, handwriting analysis, and toxicology if necessary.",
-      "Establish Motive, Means, and Opportunity – Determine why, how, and when the crime occurred.",
-      "Map Out Connections Between Individuals – Use link analysis to identify relationships.",
-      "Reconstruct the Crime – Use available evidence to create a possible sequence of events.",
-    ],
-  },
-  {
-    phase: "Phase 5: Closing the Case & Reporting",
-    steps: [
-      "Draw Conclusions & Identify the Culprit – Based on solid evidence and logical deductions.",
-      "Prepare an Official Report – Document all findings in a structured manner.",
-      "Present Evidence to Authorities – Work with prosecutors, lawyers, or relevant agencies.",
-      "Ensure Proper Chain of Custody – Maintain records to preserve evidence integrity.",
-      "Testify in Court (if required) – Provide expert analysis and sworn statements.",
-      "Close the Case or Continue Investigation – If sufficient evidence is found, proceed with legal action; if not, continue gathering information.",
-      "Review Investigation for Errors or Missed Leads – Double-check the case before finalizing.",
-      "Store Evidence & Secure Records – Ensure proper archiving for future reference.",
-      "Provide Support to Victims & Witnesses – Offer guidance on legal steps and protection if needed.",
-      "Reflect & Improve Investigation Techniques – Analyze the case for lessons learned and areas of improvement.",
-    ],
-  },
+  // ... (keep all your existing phases)
 ];
 
 const FIRSubmission = () => {
+  // Use the auth timeout hook (5 minutes inactivity)
+  useAuthTimeout(5);
+  const navigate = useNavigate();
+
   const [firs, setFirs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedFIR, setSelectedFIR] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [activeCaseId, setActiveCaseId] = useState(null);
   const [investigationData, setInvestigationData] = useState({});
+  const [investigationSteps, setInvestigationSteps] = useState(DEFAULT_INVESTIGATION_STEPS);
   const [showTrackInvestigation, setShowTrackInvestigation] = useState(false);
   const [sortBy, setSortBy] = useState("date");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -93,6 +50,7 @@ const FIRSubmission = () => {
     const fetchFirs = async () => {
       auth.onAuthStateChanged(async (user) => {
         if (!user) {
+          navigate('/user/login');
           setLoading(false);
           return;
         }
@@ -118,26 +76,37 @@ const FIRSubmission = () => {
     };
 
     fetchFirs();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (activeCaseId) {
       const fetchInvestigationData = async () => {
         try {
-          const investigationDoc = await getDocs(
-            collection(db, "investigations")
-          );
-          const investigationData = investigationDoc.docs.find(
-            (doc) => doc.data().firId === activeCaseId
-          );
-          if (investigationData) {
-            setInvestigationData(investigationData.data().data);
+          const firDoc = await getDoc(doc(db, "firs", activeCaseId));
+          if (!firDoc.exists()) {
+            throw new Error("FIR document not found");
+          }
+          
+          const firData = firDoc.data();
+          const incidentType = firData.incidentType;
+
+          const investigationResult = await getInvestigationSteps(activeCaseId, incidentType);
+          
+          if (investigationResult.steps) {
+            setInvestigationSteps(investigationResult.steps);
+          }
+
+          const investigationDoc = await getDoc(doc(db, "investigations", activeCaseId));
+          if (investigationDoc.exists()) {
+            setInvestigationData(investigationDoc.data().data || {});
           } else {
             setInvestigationData({});
           }
         } catch (error) {
           toast.error("Failed to fetch investigation data");
           console.error("Error fetching investigation data:", error);
+          setInvestigationSteps(DEFAULT_INVESTIGATION_STEPS);
+          setInvestigationData({});
         }
       };
 
@@ -152,14 +121,18 @@ const FIRSubmission = () => {
 
   const calculateProgress = () => {
     let completedSteps = 0;
+    let totalSteps = 0;
+
     investigationSteps.forEach((phase, phaseIndex) => {
       phase.steps.forEach((_, stepIndex) => {
+        totalSteps++;
         if (investigationData[phaseIndex]?.[stepIndex]) {
           completedSteps++;
         }
       });
     });
-    return (completedSteps / 40) * 100;
+
+    return totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
   };
 
   const handleViewDetails = (fir) => {
@@ -227,7 +200,7 @@ const FIRSubmission = () => {
         </p>
         <p className="text-gray-600 truncate">{fir.incidentDescription}</p>
         <div className="mt-4 flex space-x-2">
-          {fir.supportingDocuments.map((url, index) => (
+          {fir.supportingDocuments?.map((url, index) => (
             <img
               key={index}
               src={url}
@@ -237,7 +210,6 @@ const FIRSubmission = () => {
           ))}
         </div>
 
-        {/* Show rejection reason for rejected cases */}
         {fir.status === "Rejected" && fir.rejectedReason && (
           <div className="mt-4 p-3 bg-red-50 rounded border border-red-100">
             <p className="font-semibold text-red-800">Rejection Reason:</p>
@@ -245,7 +217,6 @@ const FIRSubmission = () => {
           </div>
         )}
 
-        {/* Show unsolved reason for unsolved cases */}
         {fir.status === "UnSolved" && fir.unsolvedReason && (
           <div className="mt-4 p-3 bg-purple-50 rounded border border-purple-100">
             <p className="font-semibold text-purple-800">Unsolved Reason:</p>
@@ -253,7 +224,6 @@ const FIRSubmission = () => {
           </div>
         )}
 
-        {/* Show reopen reason for reopened cases */}
         {fir.reopenReason && (
           <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-100">
             <p className="font-semibold text-blue-800">Reopen Reason:</p>
@@ -286,6 +256,7 @@ const FIRSubmission = () => {
       <Header />
       <Navbar />
       <Chatbot />
+      
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -501,17 +472,17 @@ const FIRSubmission = () => {
             <div className="mb-6">
               <h3 className="text-xl font-semibold mb-4">Location Details</h3>
               <p>
-                <strong>Address:</strong> {selectedFIR.incidentLocation.address}
+                <strong>Address:</strong> {selectedFIR.incidentLocation?.address || 'N/A'}
               </p>
               <p>
-                <strong>City:</strong> {selectedFIR.incidentLocation.city}
+                <strong>City:</strong> {selectedFIR.incidentLocation?.city || 'N/A'}
               </p>
               <p>
-                <strong>State:</strong> {selectedFIR.incidentLocation.state}
+                <strong>State:</strong> {selectedFIR.incidentLocation?.state || 'N/A'}
               </p>
               <p>
                 <strong>GPS Coordinates:</strong>{" "}
-                {selectedFIR.incidentLocation.gpsCoordinates}
+                {selectedFIR.incidentLocation?.gpsCoordinates || 'N/A'}
               </p>
             </div>
 
@@ -520,15 +491,15 @@ const FIRSubmission = () => {
                 Suspect Information
               </h3>
               <p>
-                <strong>Name:</strong> {selectedFIR.suspectDetails.name}
+                <strong>Name:</strong> {selectedFIR.suspectDetails?.name || 'N/A'}
               </p>
               <p>
                 <strong>Description:</strong>{" "}
-                {selectedFIR.suspectDetails.description}
+                {selectedFIR.suspectDetails?.description || 'N/A'}
               </p>
               <p>
                 <strong>Known Address:</strong>{" "}
-                {selectedFIR.suspectDetails.knownAddress}
+                {selectedFIR.suspectDetails?.knownAddress || 'N/A'}
               </p>
             </div>
 
@@ -537,10 +508,10 @@ const FIRSubmission = () => {
                 Witness Information
               </h3>
               <p>
-                <strong>Name:</strong> {selectedFIR.witnessDetails.name}
+                <strong>Name:</strong> {selectedFIR.witnessDetails?.name || 'N/A'}
               </p>
               <p>
-                <strong>Contact:</strong> {selectedFIR.witnessDetails.contact}
+                <strong>Contact:</strong> {selectedFIR.witnessDetails?.contact || 'N/A'}
               </p>
             </div>
 
@@ -549,17 +520,21 @@ const FIRSubmission = () => {
                 Supporting Documents
               </h3>
               <div className="space-y-2">
-                {selectedFIR.supportingDocuments.map((url, index) => (
-                  <div key={index} className="text-blue-600">
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      Document {index + 1}
-                    </a>
-                  </div>
-                ))}
+                {selectedFIR.supportingDocuments?.length > 0 ? (
+                  selectedFIR.supportingDocuments.map((url, index) => (
+                    <div key={index} className="text-blue-600">
+                      <a href={url} target="_blank" rel="noopener noreferrer">
+                        Document {index + 1}
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <p>No supporting documents</p>
+                )}
               </div>
             </div>
 
-            <button
+                      <button
               onClick={closeModal}
               className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
             >
@@ -575,4 +550,3 @@ const FIRSubmission = () => {
 };
 
 export default FIRSubmission;
-
