@@ -1,152 +1,121 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, doc, deleteDoc, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TailSpin } from 'react-loader-spinner';
-import { ChevronDown, Calendar, Search, Trash2 } from 'lucide-react';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { Search, ChevronDown, Calendar, Trash2, Send, AlertCircle } from 'lucide-react';
 
 const PendingCases = () => {
   const [cases, setCases] = useState([]);
   const [investigators, setInvestigators] = useState({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [showModal, setShowModal] = useState(false);
   const [selectedFIR, setSelectedFIR] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({
-    key: 'incidentDateTime',
-    direction: 'desc',
-  });
   const [deletingId, setDeletingId] = useState(null);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [message, setMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageSent, setMessageSent] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        setError(null);
         
-        if (!db) {
-          throw new Error('Firebase not initialized properly');
-        }
-
-        // First try the complete query
-        let casesQuery;
-        try {
-          casesQuery = query(
-            collection(db, 'firs'),
-            where('status', '==', 'Pending'),
-            orderBy(sortConfig.key, sortConfig.direction)
-          );
-          const casesSnapshot = await getDocs(casesQuery);
-          
-          if (casesSnapshot.empty) {
-            console.log('No Pending cases found in database');
-            setCases([]);
-            return;
-          }
-
-          const casesData = [];
-          const investigatorIds = new Set();
-          
-          casesSnapshot.forEach((doc) => {
-            if (!doc.exists()) {
-              console.warn('Missing document:', doc.id);
-              return;
-            }
-            
-            const data = doc.data();
-            if (!data.status || data.status !== 'Pending') {
-              console.warn('Document with wrong status:', doc.id, data.status);
-              return;
-            }
-            
-            casesData.push({ 
-              id: doc.id, 
-              ...data,
-              incidentDateTime: data.incidentDateTime?.toDate?.() || data.incidentDateTime
-            });
-            
-            if (data.assignedInvestigator) {
-              investigatorIds.add(data.assignedInvestigator);
-            }
+        // Fetch Pending cases
+        const casesQuery = query(
+          collection(db, 'firs'),
+          where('status', '==', 'Pending')
+        );
+        const casesSnapshot = await getDocs(casesQuery);
+        
+        const casesData = [];
+        const investigatorIds = new Set();
+        
+        casesSnapshot.forEach((doc) => {
+          const data = doc.data();
+          casesData.push({ 
+            id: doc.id, 
+            ...data
           });
-
-          // Fetch investigators data if needed
-          let investigatorsData = {};
-          if (investigatorIds.size > 0) {
-            const investigatorsQuery = query(
-              collection(db, 'investigatordata'),
-              where('__name__', 'in', Array.from(investigatorIds))
-            );
-            
-            const investigatorsSnapshot = await getDocs(investigatorsQuery);
-            
-            investigatorsSnapshot.forEach((doc) => {
-              const data = doc.data();
-              investigatorsData[doc.id] = {
-                realName: data.realName || 'Unknown',
-                username: data.username || 'N/A'
-              };
-            });
-          }
-
-          setInvestigators(investigatorsData);
-          setCases(casesData);
           
-        } catch (queryError) {
-          if (queryError.code === 'failed-precondition') {
-            // Fallback to simpler query if index doesn't exist
-            console.warn('Composite index missing, falling back to simpler query');
-            const fallbackQuery = query(
-              collection(db, 'firs'),
-              where('status', '==', 'Pending')
-            );
-            const casesSnapshot = await getDocs(fallbackQuery);
-            
-            const casesData = [];
-            casesSnapshot.forEach((doc) => {
-              const data = doc.data();
-              if (data.status === 'Pending') {
-                casesData.push({
-                  id: doc.id,
-                  ...data,
-                  incidentDateTime: data.incidentDateTime?.toDate?.() || data.incidentDateTime
-                });
-              }
-            });
-            
-            // Sort locally
-            casesData.sort((a, b) => {
-              const dateA = a.incidentDateTime ? new Date(a.incidentDateTime).getTime() : 0;
-              const dateB = b.incidentDateTime ? new Date(b.incidentDateTime).getTime() : 0;
-              return sortConfig.direction === 'desc' ? dateB - dateA : dateA - dateB;
-            });
-            
-            setCases(casesData);
-            toast.info('Displaying Pending cases');
-          } else {
-            throw queryError;
+          if (data.assignedInvestigator) {
+            investigatorIds.add(data.assignedInvestigator);
           }
+        });
+
+        // Fetch investigators data
+        let investigatorsData = {};
+        if (investigatorIds.size > 0) {
+          const investigatorsQuery = query(
+            collection(db, 'investigatordata'),
+            where('__name__', 'in', Array.from(investigatorIds))
+          );
+          const investigatorsSnapshot = await getDocs(investigatorsQuery);
+          
+          investigatorsSnapshot.forEach((doc) => {
+            investigatorsData[doc.id] = doc.data();
+          });
         }
+
+        setInvestigators(investigatorsData);
+        setCases(casesData);
         
       } catch (error) {
-        console.error('Full error details:', {
-          message: error.message,
-          stack: error.stack,
-          code: error.code,
-          details: error.details
-        });
-        
-        setError(error);
-        toast.error(`Failed to load cases: ${error.message}`);
+        console.error('Error loading data:', error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [sortConfig]);
+  }, []);
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedCases = React.useMemo(() => {
+    let sortableItems = [...cases];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        // Handle nested properties
+        const getValue = (obj, key) => {
+          return key.split('.').reduce((o, k) => (o || {})[k], obj);
+        };
+
+        const aValue = getValue(a, sortConfig.key);
+        const bValue = getValue(b, sortConfig.key);
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [cases, sortConfig]);
+
+  const filteredCases = React.useMemo(() => {
+    return sortedCases.filter((fir) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (fir.complainantName?.toLowerCase().includes(searchLower)) ||
+        (fir.incidentType?.toLowerCase().includes(searchLower)) ||
+        (fir.incidentLocation?.city?.toLowerCase().includes(searchLower)) ||
+        (fir.incidentDescription?.toLowerCase().includes(searchLower)) ||
+        (fir.contactNumber?.includes(searchTerm))
+      );
+    });
+  }, [sortedCases, searchTerm]);
 
   const openModal = (fir) => {
     setSelectedFIR(fir);
@@ -158,112 +127,63 @@ const PendingCases = () => {
     setSelectedFIR(null);
   };
 
-  const requestSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
   const handleDelete = async (id) => {
-    
-    try {
-      setDeletingId(id);
-      await deleteDoc(doc(db, 'firs', id));
-      setCases(prev => prev.filter(caseItem => caseItem.id !== id));
-      toast.success('Case deleted successfully');
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error(`Delete failed: ${error.message}`);
-    } finally {
-      setDeletingId(null);
+    if (window.confirm('Are you sure you want to delete this case?')) {
+      try {
+        setDeletingId(id);
+        await deleteDoc(doc(db, 'firs', id));
+        setCases(cases.filter((fir) => fir.id !== id));
+      } catch (error) {
+        console.error('Error deleting document:', error);
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
-  const filteredCases = cases.filter((fir) => {
-    if (!fir) return false;
-    
-    const searchLower = searchTerm.toLowerCase();
-    const investigator = fir.assignedInvestigator ? investigators[fir.assignedInvestigator] : null;
-    
-    const fieldsToSearch = [
-      fir.complainantName?.toLowerCase(),
-      fir.incidentType?.toLowerCase(),
-      fir.incidentLocation?.city?.toLowerCase(),
-      fir.status?.toLowerCase(),
-      investigator?.realName?.toLowerCase(),
-      investigator?.username?.toLowerCase()
-    ].filter(Boolean);
+  const openMessageModal = (fir) => {
+    setSelectedFIR(fir);
+    setShowMessageModal(true);
+    setMessage('');
+    setMessageSent(false);
+  };
 
-    return fieldsToSearch.some(field => field.includes(searchLower));
-  });
+  const closeMessageModal = () => {
+    setShowMessageModal(false);
+    setSelectedFIR(null);
+    setMessage('');
+    setMessageSent(false);
+  };
+
+  const sendMessageToInvestigator = async () => {
+    if (!message.trim() || !selectedFIR?.assignedInvestigator) return;
+
+    try {
+      setSendingMessage(true);
+      
+      await addDoc(collection(db, 'adminalerts'), {
+        investigatorId: selectedFIR.assignedInvestigator,
+        message: message.trim(),
+        caseId: selectedFIR.id,
+        createdAt: serverTimestamp(),
+        read: false
+      });
+
+      setMessageSent(true);
+      setTimeout(() => {
+        closeMessageModal();
+      }, 1500);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px]">
+      <div className="flex items-center justify-center min-h-[300px]">
         <TailSpin color="#3B82F6" height={60} width={60} />
-        <p className="mt-4 text-gray-600">Loading Pending cases...</p>
-      </div>
-    );
-  }
-
-  if (error && error.code === 'failed-precondition') {
-    const errorLink = error.message.match(/https:\/\/[^ ]+/)?.[0] || '';
-    return (
-      <div className="p-6 bg-red-50 rounded-lg">
-        <h2 className="text-xl font-bold text-red-800">Index Required</h2>
-        <p className="mt-2 text-red-600">
-          This query requires a Firestore index. Please create it to view Pending cases properly.
-        </p>
-        {errorLink && (
-          <a 
-            href={errorLink} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="mt-3 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Create Index Now
-          </a>
-        )}
-        <p className="mt-4 text-sm text-gray-600">
-          After creating the index, refresh this page. Index activation may take a few minutes.
-        </p>
-        <details className="mt-4 text-sm">
-          <summary className="cursor-pointer text-blue-600">Technical Details</summary>
-          <pre className="mt-2 p-2 bg-gray-100 rounded overflow-x-auto">
-            {JSON.stringify({
-              error: error.message,
-              code: error.code,
-              time: new Date().toISOString()
-            }, null, 2)}
-          </pre>
-        </details>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 bg-red-50 rounded-lg">
-        <h2 className="text-xl font-bold text-red-800">Error Loading Cases</h2>
-        <p className="mt-2 text-red-600">{error.message}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Try Again
-        </button>
-        <details className="mt-4 text-sm">
-          <summary className="cursor-pointer text-blue-600">Technical Details</summary>
-          <pre className="mt-2 p-2 bg-gray-100 rounded overflow-x-auto">
-            {JSON.stringify({
-              error: error.message,
-              code: error.code,
-              time: new Date().toISOString()
-            }, null, 2)}
-          </pre>
-        </details>
       </div>
     );
   }
@@ -412,7 +332,7 @@ const PendingCases = () => {
                           'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        <span className="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                           Pending
                         </span>
                       </td>
@@ -423,6 +343,15 @@ const PendingCases = () => {
                         >
                           View
                         </button>
+                        {investigator && (
+                          <button
+                            onClick={() => openMessageModal(fir)}
+                            className="text-purple-600 hover:text-purple-900 flex items-center"
+                          >
+                            <Send className="h-4 w-4 mr-1" />
+                            Message
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(fir.id)}
                           className="text-red-600 hover:text-red-900 flex items-center"
@@ -448,7 +377,7 @@ const PendingCases = () => {
                       {cases.length === 0 ? (
                         <>
                           <p className="font-medium">No Pending cases found</p>
-                          <p className="text-sm mt-1">All cases have been processed or none have been submitted yet.</p>
+                          <p className="text-sm mt-1">All cases have been processed or none have been Pending yet.</p>
                         </>
                       ) : (
                         <>
@@ -570,6 +499,16 @@ const PendingCases = () => {
                         @{investigators[selectedFIR.assignedInvestigator]?.username || 'N/A'}
                       </dd>
                     </div>
+                    <button
+                      onClick={() => {
+                        setShowModal(false);
+                        openMessageModal(selectedFIR);
+                      }}
+                      className="mt-2 px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm flex items-center"
+                    >
+                      <Send className="h-4 w-4 mr-1" />
+                      Send Message
+                    </button>
                   </>
                 ) : (
                   <p className="text-gray-500">No investigator assigned</p>
@@ -621,6 +560,81 @@ const PendingCases = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Modal */}
+      {showMessageModal && selectedFIR && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                <AlertCircle className="h-5 w-5 text-purple-600 mr-2" />
+                Send Message to Investigator
+              </h2>
+              <button
+                onClick={closeMessageModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            {selectedFIR.assignedInvestigator && investigators[selectedFIR.assignedInvestigator] && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600">Recipient:</p>
+                <p className="font-medium">
+                  {investigators[selectedFIR.assignedInvestigator].realName} (@{investigators[selectedFIR.assignedInvestigator].username})
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Case ID: {selectedFIR.id}</p>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                Message
+              </label>
+              <textarea
+                id="message"
+                rows="4"
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                placeholder="Write your message here..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                disabled={sendingMessage || messageSent}
+              />
+            </div>
+
+            {messageSent ? (
+              <div className="p-3 bg-green-100 text-green-800 rounded-md mb-4">
+                Message sent successfully!
+              </div>
+            ) : (
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={closeMessageModal}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                  disabled={sendingMessage}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sendMessageToInvestigator}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300 flex items-center"
+                  disabled={!message.trim() || sendingMessage}
+                >
+                  {sendingMessage ? (
+                    <TailSpin color="#FFFFFF" height={20} width={20} />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Message
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

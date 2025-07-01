@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TailSpin } from 'react-loader-spinner';
-import { Search, ChevronDown, Calendar, Trash2 } from 'lucide-react';
+import { Search, ChevronDown, Calendar, Trash2, Send, AlertCircle } from 'lucide-react';
 
 const SolvedCases = () => {
   const [cases, setCases] = useState([]);
@@ -13,6 +13,10 @@ const SolvedCases = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedFIR, setSelectedFIR] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageContent, setMessageContent] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageSent, setMessageSent] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -134,6 +138,45 @@ const SolvedCases = () => {
       } finally {
         setDeletingId(null);
       }
+    }
+  };
+
+  const openMessageModal = (fir) => {
+    setSelectedFIR(fir);
+    setShowMessageModal(true);
+    setMessageContent('');
+    setMessageSent(false);
+  };
+
+  const closeMessageModal = () => {
+    setShowMessageModal(false);
+    setSelectedFIR(null);
+    setMessageContent('');
+  };
+
+  const sendMessageToInvestigator = async () => {
+    if (!messageContent.trim() || !selectedFIR?.assignedInvestigator) return;
+    
+    try {
+      setSendingMessage(true);
+      
+      await addDoc(collection(db, 'adminalerts'), {
+        investigatorId: selectedFIR.assignedInvestigator,
+        message: messageContent,
+        createdAt: serverTimestamp(),
+        read: false,
+        caseId: selectedFIR.id,
+        caseTitle: selectedFIR.incidentType || 'Solved Case'
+      });
+      
+      setMessageSent(true);
+      setTimeout(() => {
+        setShowMessageModal(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -300,6 +343,15 @@ const SolvedCases = () => {
                         >
                           View
                         </button>
+                        {investigator && (
+                          <button
+                            onClick={() => openMessageModal(fir)}
+                            className="text-green-600 hover:text-green-900 flex items-center"
+                          >
+                            <Send className="h-4 w-4 mr-1" />
+                            Message
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(fir.id)}
                           className="text-red-600 hover:text-red-900 flex items-center"
@@ -447,6 +499,16 @@ const SolvedCases = () => {
                         @{investigators[selectedFIR.assignedInvestigator]?.username || 'N/A'}
                       </dd>
                     </div>
+                    <button
+                      onClick={() => {
+                        setShowModal(false);
+                        openMessageModal(selectedFIR);
+                      }}
+                      className="mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 flex items-center text-sm"
+                    >
+                      <Send className="h-4 w-4 mr-1" />
+                      Send Message
+                    </button>
                   </>
                 ) : (
                   <p className="text-gray-500">No investigator assigned</p>
@@ -498,6 +560,83 @@ const SolvedCases = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message to Investigator Modal */}
+      {showMessageModal && selectedFIR && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                <AlertCircle className="h-5 w-5 text-yellow-500 mr-2" />
+                Send Message to Investigator
+              </h2>
+              <button
+                onClick={closeMessageModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            {selectedFIR.assignedInvestigator && investigators[selectedFIR.assignedInvestigator] && (
+              <div className="mb-4 bg-blue-50 p-3 rounded-md">
+                <p className="text-sm text-gray-700 mb-1">Sending to:</p>
+                <p className="font-medium">
+                  {investigators[selectedFIR.assignedInvestigator].realName} (@{investigators[selectedFIR.assignedInvestigator].username})
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Case: {selectedFIR.incidentType || 'Solved Case'} (ID: {selectedFIR.id.slice(0, 6)}...)
+                </p>
+              </div>
+            )}
+
+            {messageSent ? (
+              <div className="p-4 bg-green-100 text-green-700 rounded-md text-center">
+                Message sent successfully!
+              </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                    Message
+                  </label>
+                  <textarea
+                    id="message"
+                    rows="4"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Type your message here..."
+                    value={messageContent}
+                    onChange={(e) => setMessageContent(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={closeMessageModal}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={sendMessageToInvestigator}
+                    disabled={!messageContent.trim() || sendingMessage}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center"
+                  >
+                    {sendingMessage ? (
+                      <TailSpin color="#FFFFFF" height={20} width={20} />
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Message
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

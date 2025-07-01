@@ -42,7 +42,7 @@ const InvestigatorSignup = () => {
    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]).{9,}$/;
 
 if (!passwordRegex.test(formData.password)) {
-  toast.error("❌ Password must be at least 9 characters long and include a letter, a number, and a special character.");
+  toast.error("❌ Password must be at least 9 characters long and include letters, numbers, and a special character.");
   return false;
 }
 

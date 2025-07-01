@@ -279,7 +279,7 @@ const TotalUsers = () => {
                     <div>
                       <h3 className="font-medium text-sm sm:text-base">FIR ID: {fir.id}</h3>
                       <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                        Created: {fir.createdAt ? new Date(fir.createdAt).toLocaleString() : 'Unknown date'}
+                        Created: {fir.timestamp ? new Date(fir.timestamp).toLocaleString() : 'Unknown date'}
                       </p>
                     </div>
                     <span className={`mt-2 sm:mt-0 px-2 py-1 rounded text-xs ${

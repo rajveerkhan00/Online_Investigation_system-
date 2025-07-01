@@ -10,7 +10,6 @@ import {
   FaTimesCircle,
 } from "react-icons/fa";
 import Header from "../components/HeaderA";
-import Adminnav from "../components/Adminnav";
 import AppReq from "../components/ApprovalRequests";
 import TInvestigators from "../components/TInvestigators";
 import TUsers from "../components/TotalUser";
@@ -171,7 +170,6 @@ const AdminDashboard = () => {
   return (
     <div>
       <Header />
-      <Adminnav />
       <AppReq />
       
       <div className="min-h-screen bg-gradient-to-r from-gray-50 to-gray-100 p-6 mt-20">

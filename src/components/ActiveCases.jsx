@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TailSpin } from 'react-loader-spinner';
-import { Search, ChevronDown, Calendar, Trash2 } from 'lucide-react';
+import { Search, ChevronDown, Calendar, Trash2, Send, AlertCircle } from 'lucide-react';
 
 const ActiveCases = () => {
   const [cases, setCases] = useState([]);
@@ -13,6 +13,9 @@ const ActiveCases = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedFIR, setSelectedFIR] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [message, setMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [showMessageSuccess, setShowMessageSuccess] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -116,11 +119,15 @@ const ActiveCases = () => {
   const openModal = (fir) => {
     setSelectedFIR(fir);
     setShowModal(true);
+    setMessage('');
+    setShowMessageSuccess(false);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedFIR(null);
+    setMessage('');
+    setShowMessageSuccess(false);
   };
 
   const handleDelete = async (id) => {
@@ -134,6 +141,33 @@ const ActiveCases = () => {
       } finally {
         setDeletingId(null);
       }
+    }
+  };
+
+  const sendMessageToInvestigator = async () => {
+    if (!message.trim() || !selectedFIR?.assignedInvestigator) return;
+    
+    try {
+      setSendingMessage(true);
+      
+      // Add message to adminalerts collection
+      await addDoc(collection(db, 'adminalerts'), {
+        investigatorId: selectedFIR.assignedInvestigator,
+        message: message.trim(),
+        firId: selectedFIR.id,
+        createdAt: serverTimestamp(),
+        read: false,
+        caseTitle: selectedFIR.incidentType || 'Active Case',
+        status: 'unread'
+      });
+      
+      setMessage('');
+      setShowMessageSuccess(true);
+      setTimeout(() => setShowMessageSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -289,7 +323,7 @@ const ActiveCases = () => {
                           'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                        <span className="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                           Active
                         </span>
                       </td>
@@ -432,7 +466,7 @@ const ActiveCases = () => {
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-3 text-gray-700">Investigator</h3>
+                <h3 className="text-lg font-semibold mb-3 text-gray-700">Investigator & Status</h3>
                 {selectedFIR.assignedInvestigator ? (
                   <>
                     <div className="mb-2">
@@ -451,6 +485,10 @@ const ActiveCases = () => {
                 ) : (
                   <p className="text-gray-500">No investigator assigned</p>
                 )}
+                <div className="mb-2">
+                  <dt className="text-sm font-medium text-gray-500">Status</dt>
+                  <dd className="mt-1 text-sm font-semibold text-green-600">Active</dd>
+                </div>
               </div>
             </div>
 
@@ -469,6 +507,44 @@ const ActiveCases = () => {
                       Document {index + 1}
                     </a>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Message to Investigator Section */}
+            {selectedFIR.assignedInvestigator && (
+              <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-3 text-gray-700">Send Message to Investigator</h3>
+                <div className="flex flex-col space-y-3">
+                  <textarea
+                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={3}
+                    placeholder="Type your message here..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                  />
+                  <div className="flex justify-between items-center">
+                    <button
+                      onClick={sendMessageToInvestigator}
+                      disabled={!message.trim() || sendingMessage}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 flex items-center"
+                    >
+                      {sendingMessage ? (
+                        <TailSpin color="#FFFFFF" height={20} width={20} />
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Send Message
+                        </>
+                      )}
+                    </button>
+                    {showMessageSuccess && (
+                      <div className="flex items-center text-green-600">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        Message sent successfully!
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
