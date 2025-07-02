@@ -35,6 +35,9 @@ import UserChat from '../pages/UserChat';
 import InvestigatorChat from '../pages/InvestigatorChat';
 import Id from '../pages/idcard';
 import TInvestigators from './TInvestigators';
+import AD from '../pages/AdminDetails';
+import HomeS from '../pages/AdminAddUser';
+import SAUD from '../pages/SearchAddUser';
 
 
 
@@ -80,6 +83,9 @@ export default function Menuroutes() {
           <Route path="/Investigator/Chat" element={<InvestigatorChat />} />
           <Route path="/Idcard" element={<Id />} />
           <Route path="/Admin/Total/Investigators" element={<TInvestigators />} />
+          <Route path="/Admin/Details" element={<AD />} />
+          <Route path="/Admin/Add/User" element={<HomeS />} />
+          <Route path="/Investigator/Search/DB" element={<SAUD />} />
           
       
           

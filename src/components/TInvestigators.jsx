@@ -63,7 +63,7 @@ const TInvestigators = () => {
     }
 
     try {
-      await addDoc(collection(db, "Adminalerts"), {
+      await addDoc(collection(db, "adminalerts"), {
         investigatorId: selectedInvestigator.id,
         investigatorName: selectedInvestigator.realName,
         message: message,

@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, getDocs, updateDoc, doc } from 'firebase/firestore';
+import {
+  collection, query, where, onSnapshot,
+  getDocs, updateDoc, doc, addDoc
+} from 'firebase/firestore';
 import { BellIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,13 +12,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const InvestigatorNotifications = () => {
   const [notifications, setNotifications] = useState([]);
+  const [caseNotifications, setCaseNotifications] = useState([]);
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isRinging, setIsRinging] = useState(false);
-  const [userDataMap, setUserDataMap] = useState({});
-  const [caseNotifications, setCaseNotifications] = useState([]);
-  const [processedCases, setProcessedCases] = useState(new Set());
+  const processedCases = useRef(new Set());
+  const escalationTimers = useRef({});
+  const lastMessageIds = useRef(new Set());
+  const processedNotifications = useRef(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,200 +30,194 @@ const InvestigatorNotifications = () => {
       return;
     }
 
-    // Listen for new cases assigned to this investigator
-    const casesQuery = query(
+    const casesQ = query(
       collection(db, 'firs'),
       where('assignedInvestigator', '==', auth.currentUser.uid),
-      where('status','==','Pending')
+      where('status', '==', 'Pending')
     );
 
-    const unsubscribeCases = onSnapshot(casesQuery, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added' && !processedCases.has(change.doc.id)) {
-          // Add to processed cases to prevent duplicate notifications
-          setProcessedCases(prev => {
-            const newSet = new Set(prev);
-            newSet.add(change.doc.id);
-            return newSet;
-          });
+    const unsubCases = onSnapshot(casesQ, snap => {
+      snap.docChanges().forEach(change => {
+        const caseId = change.doc.id;
+        if (change.type === 'added' && !processedCases.current.has(caseId)) {
+          processedCases.current.add(caseId);
 
-          const notification = {
-            id: change.doc.id,
+          const newNotif = {
+            id: caseId,
             type: 'case',
             text: 'New case assigned to you! Respond quickly!',
             timestamp: new Date(),
             read: false,
-            caseId: change.doc.id,
-            backgroundColor: 'bg-red-100',
-            borderColor: 'border-red-200'
+            caseId: caseId
           };
-          
-          setCaseNotifications(prev => [notification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          setIsRinging(true);
-          setTimeout(() => setIsRinging(false), 1000);
-          
-          toast.info('New case assigned to you!', {
-            position: "top-right",
+
+          setCaseNotifications(prev => [newNotif, ...prev]);
+          setUnreadCount(c => c + 1);
+          triggerBell();
+          toast.info(newNotif.text, {
+            position: 'top-right',
             autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "light",
-            style: { 
-              backgroundColor: '#fee2e2', 
-              borderLeft: '4px solid #ef4444',
-              color: '#b91c1c'
-            }
+            style: { backgroundColor: '#fee2e2', borderLeft: '4px solid #ef4444' }
           });
+
+          startEscalationTimers(caseId, change.doc.data().userName || 'Unknown User');
         }
       });
     });
 
-    const fetchUserData = async (userIds) => {
-      const userData = {};
-      
-      for (const userId of userIds) {
-        try {
-          const userQuery = query(collection(db, 'usersdata'), where('uid', '==', userId));
-          const userSnapshot = await getDocs(userQuery);
-          
-          if (!userSnapshot.empty) {
-            const userDoc = userSnapshot.docs[0].data();
-            userData[userId] = {
-              username: userDoc.username || `User (${userId.slice(0, 4)})`,
-              email: userDoc.email || 'No email'
-            };
-          } else {
-            userData[userId] = {
-              username: `User (${userId.slice(0, 4)})`,
-              email: 'No email'
-            };
-          }
-        } catch (error) {
-          console.error(`Error fetching user data for ${userId}:`, error);
-          userData[userId] = {
-            username: `User (${userId.slice(0, 4)})`,
-            email: 'Error loading email'
-          };
-        }
-      }
-      
-      setUserDataMap(userData);
-    };
+    const chatsQ = query(
+      collection(db, 'chats'),
+      where('investigatorId', '==', auth.currentUser.uid)
+    );
 
-    const fetchNotifications = async () => {
-      try {
-        const chatsQuery = query(
-          collection(db, 'chats'),
-          where('investigatorId', '==', auth.currentUser.uid)
+    const unsubChats = onSnapshot(chatsQ, async snap => {
+      const newMessages = [];
+      for (const chatDoc of snap.docs) {
+        const msgsQ = query(
+          collection(db, 'chats', chatDoc.id, 'messages'),
+          where('read', '==', false),
+          where('senderType', '==', 'user')
         );
+        const msgsSnap = await getDocs(msgsQ);
 
-        const unsubscribe = onSnapshot(chatsQuery, async (chatsSnapshot) => {
-          let allNotifications = [];
-          let newMessageCount = 0;
-          const userIds = new Set();
-          
-          chatsSnapshot.docs.forEach(chatDoc => {
-            if (chatDoc.data().userId) {
-              userIds.add(chatDoc.data().userId);
-            }
-          });
-
-          await fetchUserData(Array.from(userIds));
-
-          for (const chatDoc of chatsSnapshot.docs) {
-            const messagesRef = collection(db, 'chats', chatDoc.id, 'messages');
-            const messagesQuery = query(
-              messagesRef,
-              where('read', '==', false),
-              where('senderType', '==', 'user')
-            );
-
-            const messagesSnapshot = await getDocs(messagesQuery);
-            
-            messagesSnapshot.forEach((messageDoc) => {
-              const message = messageDoc.data();
-              const userId = chatDoc.data().userId;
-              const userData = userDataMap[userId] || {
-                username: `User (${userId?.slice(0, 4) || 'unknown'})`
-              };
-              
-              allNotifications.push({
-                id: messageDoc.id,
-                chatId: chatDoc.id,
-                userId: userId,
-                text: message.content || 'New message',
-                senderName: userData.username,
-                timestamp: message.timestamp?.toDate() || new Date(),
-                read: false,
-                type: 'message',
-                backgroundColor: 'bg-white',
-                borderColor: 'border-yellow-50'
-              });
-              newMessageCount++;
+        msgsSnap.forEach(msgDoc => {
+          const mid = msgDoc.id;
+          if (!lastMessageIds.current.has(mid)) {
+            lastMessageIds.current.add(mid);
+            newMessages.push({
+              id: mid,
+              chatId: chatDoc.id,
+              text: msgDoc.data().content || 'New message',
+              timestamp: msgDoc.data().timestamp?.toDate() || new Date(),
+              senderName: msgDoc.data().senderName || 'User',
+              type: 'message',
+              read: false
             });
           }
-
-          if (newMessageCount > 0 && notifications.length < allNotifications.length) {
-            setIsRinging(true);
-            setTimeout(() => setIsRinging(false), 1000);
-          }
-
-          allNotifications.sort((a, b) => b.timestamp - a.timestamp);
-          
-          setNotifications(allNotifications);
-          setUnreadCount(prev => prev + allNotifications.length);
-          setLoading(false);
         });
-
-        return () => unsubscribe();
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-        toast.error('Failed to load notifications');
-        setLoading(false);
       }
-    };
 
-    fetchNotifications();
+      if (newMessages.length) {
+        setNotifications(prev => [...newMessages, ...prev].sort((a, b) => b.timestamp - a.timestamp));
+        setUnreadCount(c => c + newMessages.length);
+        triggerBell();
+      }
+
+      setLoading(false);
+    });
+
+    const adminAlertsQ = query(
+      collection(db, 'adminalerts'),
+      where('investigatorId', '==', auth.currentUser.uid),
+      where('status', '==', 'unread')
+    );
+
+    const unsubAdmin = onSnapshot(adminAlertsQ, snapshot => {
+      const newAdminNotifs = [];
+
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added' && !processedNotifications.current.has(change.doc.id)) {
+          processedNotifications.current.add(change.doc.id);
+          const data = change.doc.data();
+          newAdminNotifs.push({
+            id: change.doc.id,
+            type: 'admin',
+            text: data.message || 'Important alert from admin!',
+            timestamp: data.createdAt?.toDate() || new Date(),
+            read: false
+          });
+        }
+      });
+
+      if (newAdminNotifs.length) {
+        setAdminNotifications(prev => [...newAdminNotifs, ...prev]);
+        setUnreadCount(c => c + newAdminNotifs.length);
+        triggerBell();
+      }
+    });
 
     return () => {
-      unsubscribeCases();
+      unsubCases();
+      unsubChats();
+      unsubAdmin();
+      // Clear timers
+      Object.values(escalationTimers.current).forEach(t => {
+        clearTimeout(t.warning);
+        clearTimeout(t.final);
+      });
     };
-  }, [auth.currentUser, notifications.length, userDataMap, processedCases]);
+  }, []);
 
-  const markAsRead = async (notification) => {
-    try {
-      if (notification.type === 'message') {
-        await updateDoc(doc(db, 'chats', notification.chatId, 'messages', notification.id), {
-          read: true
+  const startEscalationTimers = (caseId, username) => {
+    const investigatorId = auth.currentUser.uid;
+
+    const warning = setTimeout(() => {
+      toast.warn("Review the case quickly otherwise strict action is taken", {
+        position: 'top-right',
+        autoClose: 5000
+      });
+    }, 24 * 60 * 60 * 1000);
+
+    const final = setTimeout(async () => {
+      toast.error("Review otherwise the notification will be sent to admin", {
+        position: 'top-right',
+        autoClose: 5000
+      });
+
+      try {
+        await addDoc(collection(db, 'Adminwindowalerts'), {
+          firid: caseId,
+          username,
+          investigatorid: investigatorId,
+          timestamp: new Date()
         });
-        setNotifications(prev => prev.filter(n => n.id !== notification.id));
-      } else if (notification.type === 'case') {
-        setCaseNotifications(prev => prev.filter(n => n.id !== notification.id));
+      } catch (error) {
+        console.error("Failed to send admin escalation:", error);
       }
-      setUnreadCount(prev => prev - 1);
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+    }, 24 * 60 * 60 * 1000);
+
+    escalationTimers.current[caseId] = { warning, final };
+  };
+
+  const triggerBell = () => {
+    setIsRinging(true);
+    setTimeout(() => setIsRinging(false), 1000);
+  };
+
+  const markAsRead = async (notif) => {
+    try {
+      if (notif.type === 'message') {
+        await updateDoc(doc(db, 'chats', notif.chatId, 'messages', notif.id), { read: true });
+        setNotifications(n => n.filter(x => x.id !== notif.id));
+      } else if (notif.type === 'admin') {
+        await updateDoc(doc(db, 'adminalerts', notif.id), { read: true, status: 'read' });
+        setAdminNotifications(n => n.filter(x => x.id !== notif.id));
+      } else {
+        setCaseNotifications(n => n.filter(x => x.id !== notif.id));
+      }
+      setUnreadCount(c => c - 1);
+    } catch (e) {
+      console.error(e);
       toast.error('Failed to mark as read');
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      const batchUpdates = notifications.map(notification => 
-        updateDoc(doc(db, 'chats', notification.chatId, 'messages', notification.id), {
-          read: true
-        })
+      const msgUpdates = notifications.map(n =>
+        updateDoc(doc(db, 'chats', n.chatId, 'messages', n.id), { read: true })
       );
-      await Promise.all(batchUpdates);
+      const alertUpdates = adminNotifications.map(n =>
+        updateDoc(doc(db, 'adminalerts', n.id), { read: true, status: 'read' })
+      );
+      await Promise.all([...msgUpdates, ...alertUpdates]);
+
       setNotifications([]);
       setCaseNotifications([]);
+      setAdminNotifications([]);
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking all as read:', error);
+    } catch (e) {
+      console.error(e);
       toast.error('Failed to mark all as read');
     }
   };
@@ -227,57 +227,29 @@ const InvestigatorNotifications = () => {
     setIsOpen(false);
   };
 
-  const handleViewCase = (caseId) => {
-    setIsOpen(true);
-  };
+  const allNotifs = [...caseNotifications, ...notifications, ...adminNotifications].sort((a, b) => b.timestamp - a.timestamp);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center p-2">
-        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-yellow-500"></div>
-      </div>
-    );
+    return <div className="flex items-center justify-center p-2">Loading...</div>;
   }
 
-  const allNotifications = [...caseNotifications, ...notifications].sort((a, b) => b.timestamp - a.timestamp);
-
-return (
-    <div className="fixed right-4 top-[125px] z-50">
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background:rgb(74, 75, 75);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background:rgb(42, 43, 43);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #6b7280;
-        }
-      `}</style>
-      
-      <motion.button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-full hover:bg-gray-100 relative focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-70 shadow-lg"
-        aria-label="Notifications"
+  return (
+    <div className="fixed right-4 top-32 z-50">
+      <motion.button
+        onClick={() => setIsOpen(o => !o)}
+        className="relative p-2 rounded-full border border-gray-400 h-10 w-10 flex items-center justify-center bg-white shadow-xl hover:shadow-2xl hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out"
         animate={{
           rotate: isRinging ? [0, -15, 15, -15, 15, 0] : 0,
           scale: isRinging ? [1, 1.1, 1] : 1
         }}
         transition={{ duration: 0.5 }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
       >
-        <BellIcon className={`h-7 w-7 ${isRinging ? 'text-gray-700' : 'text-gray-600'}`} />
+        <BellIcon className="h-6 w-6 text-gray-600" />
         {unreadCount > 0 && (
-          <motion.span 
-            className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-gray-700 rounded-full"
+          <motion.span
+            className="absolute top-0 right-0 bg-gray-700 text-white text-xs font-bold rounded-full px-1"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
           >
             {unreadCount > 9 ? '9+' : unreadCount}
           </motion.span>
@@ -286,76 +258,45 @@ return (
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
-            className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl overflow-hidden z-50 border border-gray-200"
-            initial={{ opacity: 0, y: -20 }}
+          <motion.div
+            className="absolute right-0 mt-2 w-80 bg-white shadow-lg border rounded-lg overflow-hidden"
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, y: -10 }}
           >
-            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="font-semibold">Notifications</h3>
               {unreadCount > 0 && (
-                <button 
-                  onClick={markAllAsRead}
-                  className="text-sm text-gray-700 hover:text-gray-900 font-medium px-3 py-1 rounded-lg hover:bg-gray-200 transition-colors"
-                >
+                <button onClick={markAllAsRead} className="text-sm text-gray-500">
                   Mark all as read
                 </button>
               )}
             </div>
-            
-            <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
-              {allNotifications.length > 0 ? (
-                allNotifications.map((notification) => (
-                  <motion.div 
-                    key={`${notification.id}-${notification.timestamp.getTime()}`}
-                    className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors duration-150 ${notification.read ? 'bg-white' : 'bg-gray-50'}`}
-                    onClick={() => notification.type === 'case' ? handleViewCase(notification.caseId) : markAsRead(notification)}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0 }}
-                    layout
-                  >
-                    <div className="flex justify-between items-start">
-                      <p className="font-medium text-gray-800 truncate max-w-[70%]">
-                        {notification.type === 'case' ? 'New Case' : notification.senderName}
-                      </p>
-                      <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                        {notification.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-                      {notification.text}
-                    </p>
-                    {!notification.read && (
-                      <div className="mt-2 flex items-center">
-                        <span className="inline-block w-2 h-2 rounded-full bg-gray-500 mr-1"></span>
-                        <span className="text-xs text-gray-600">New</span>
+            <div className="max-h-64 overflow-y-auto">
+              {allNotifs.length
+                ? allNotifs.map(n => (
+                    <div
+                      key={`${n.id}-${n.timestamp.valueOf()}`}
+                      onClick={() => n.type === 'case' ? null : markAsRead(n)}
+                      className={`p-3 border-b cursor-pointer hover:bg-gray-50 ${
+                        n.read ? 'bg-white' : 'bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex justify-between">
+                        <span className="font-medium">
+                          {n.type === 'case' ? 'New Case' : n.type === 'admin' ? 'Admin' : n.senderName}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {n.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
-                    )}
-                  </motion.div>
-                ))
-              ) : (
-                <motion.div 
-                  className="p-6 text-center text-gray-500"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                    <BellIcon className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <h4 className="text-lg font-medium text-gray-600">No new notifications</h4>
-                  <p className="mt-1 text-sm text-gray-500">You're all caught up!</p>
-                </motion.div>
-              )}
+                      <p className="text-sm text-gray-700">{n.text}</p>
+                    </div>
+                  ))
+                : <div className="p-4 text-center text-gray-500">You're all caught up!</div>}
             </div>
-            
-            <div className="p-3 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 text-center">
-              <button
-                onClick={handleViewAllChats}
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors w-full"
-              >
+            <div className="p-2 border-t text-center">
+              <button onClick={handleViewAllChats} className="text-sm text-gray-600">
                 View all chats
               </button>
             </div>

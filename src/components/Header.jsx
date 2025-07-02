@@ -42,6 +42,9 @@ function Header() {
     isMenuOpen ? "flex flex-col" : "hidden"
   } md:flex md:flex-row md:items-center absolute md:relative right-0 top-full bg-gray-200 md:bg-transparent shadow-md md:shadow-none p-2 md:p-0 space-y-2 md:space-y-0 md:space-x-4 rounded-lg w-auto`}
 >
+
+
+
   {/* FIR Button */}
   <button className="flex items-center space-x-1 text-red-600 font-semibold hover:text-red-500 transition focus:ring-2 focus:ring-red-300 focus:ring-offset-2 p-2 rounded-md">
     <svg

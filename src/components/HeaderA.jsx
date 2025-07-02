@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Eye, Home, Bell } from "lucide-react";
+import { LayoutDashboard, Eye, Home, Bell, UserPlus } from "lucide-react";
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,11 +55,19 @@ function Header() {
         } md:flex md:flex-row md:items-center absolute md:relative right-0 top-full bg-gray-200 md:bg-transparent shadow-md md:shadow-none p-2 md:p-0 space-y-2 md:space-y-0 md:space-x-4 rounded-lg w-auto`}
       >
 
+        {/* Add User in DB */}
+        <button className="flex items-center space-x-2 text-orange-600 font-semibold hover:text-orange-500 transition focus:ring-2 focus:ring-orange-300 focus:ring-offset-2 p-2 rounded-md">
+          <UserPlus className="h-5 w-5" /> {/* New Icon */}
+          <Link to="/Admin/Add/User" className="font-bold text-sm">
+            Add Persons
+          </Link>
+        </button>
+
          {/* Showing page */}
         <button className="flex items-center space-x-2 text-red-600 font-semibold hover:text-gray-500 transition focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 p-2 rounded-md">
           <Bell className="h-5 w-5" /> {/* New Icon */}
-          <Link to="/Admin/Home" className="font-bold text-sm">
-            Requests
+          <Link to="/Admin/Details" className="font-bold text-sm">
+            Details
           </Link>
         </button>
 

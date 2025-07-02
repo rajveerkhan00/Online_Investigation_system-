@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Briefcase, CheckCircle, User, Menu } from "lucide-react";
+import {
+  FileText,
+  Briefcase,
+  CheckCircle,
+  User,
+  Menu,
+  Search
+} from "lucide-react";
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -23,7 +30,7 @@ function Header() {
 
       {/* Navigation Links - Desktop */}
       <nav className="hidden lg:flex space-x-6 text-sm font-medium text-white items-center">
-         {/* Chat Button - Desktop */}
+        {/* Chat Button - Desktop */}
         <Link
           to="/investigator/Chat"
           className="flex items-center space-x-1 text-yellow-400 font-semibold hover:text-yellow-300 transition focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 p-2 rounded-md"
@@ -44,14 +51,13 @@ function Header() {
           </svg>
           <span className="font-bold text-sm">Chat</span>
         </Link>
+        <NavItem to="/Investigator/Search/DB" icon={Search} text="Search" />
         <NavItem to="/Investigator/PendingFir" icon={FileText} text="New FIR" />
         <NavItem to="/Investigator/RunningFir" icon={Briefcase} text="Active Cases" />
         <NavItem to="/Investigator/SolvedFir" icon={CheckCircle} text="Solved Cases" />
         <NavItem to="/Investigator/UnSolvedFir" icon={CheckCircle} text="UnSolved Cases" />
         <NavItem to="/Investigator/RejectedFir" icon={CheckCircle} text="Rejected Cases" />
         <NavItem to="/Investigator/Profile" icon={User} text="My Profile" />
-        
-       
       </nav>
 
       {/* Mobile Menu - Slide In from Right */}
@@ -60,7 +66,7 @@ function Header() {
           <button className="absolute top-2 right-2 text-white" onClick={() => setMenuOpen(false)}>
             ✖
           </button>
-    {/* Chat Button - Mobile */}
+          {/* Chat Button - Mobile */}
           <Link
             to="/User/Chat"
             className="flex items-center space-x-1 text-red-600 font-semibold hover:text-red-500 transition focus:ring-2 focus:ring-red-300 focus:ring-offset-2 p-2 rounded-md"
@@ -87,8 +93,7 @@ function Header() {
           <NavItem to="/Investigator/UnSolvedFir" icon={CheckCircle} text="UnSolved Cases" />
           <NavItem to="/Investigator/RejectedFir" icon={CheckCircle} text="Rejected Cases" />
           <NavItem to="/Investigator/Profile" icon={User} text="My Profile" />
-
-      
+          <NavItem to="/Investigator/Search/DB" icon={Search} text="Search" />
         </div>
       )}
     </header>
