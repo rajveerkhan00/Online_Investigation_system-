@@ -4,6 +4,8 @@ import "react-toastify/dist/ReactToastify.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import Verify from "../components/IdCardVerification";
+import UserNot from "../components/UserNot";
 import { db, auth } from "../firebase";
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
@@ -255,7 +257,10 @@ const FIRSubmission = () => {
     <div className="min-h-screen flex flex-col bg-gray-300">
       <Header />
       <Navbar />
+      <Verify />
       <Chatbot />
+      <UserNot />
+      
       
       <ToastContainer position="top-right" autoClose={3000} />
 

@@ -51,7 +51,7 @@ function Header() {
           </svg>
           <span className="font-bold text-sm">Chat</span>
         </Link>
-        <NavItem to="/Investigator/Search/DB" icon={Search} text="Search" />
+        <NavItem to="/Investigator/Search/DB" icon={Search} text="Search DB" />
         <NavItem to="/Investigator/PendingFir" icon={FileText} text="New FIR" />
         <NavItem to="/Investigator/RunningFir" icon={Briefcase} text="Active Cases" />
         <NavItem to="/Investigator/SolvedFir" icon={CheckCircle} text="Solved Cases" />

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { db, auth } from "../firebase";
+import { db } from "../firebase";
 import { 
   collection, 
   getDocs, 
   doc, 
   updateDoc, 
   query, 
-  where,
   deleteDoc,
   addDoc,
   serverTimestamp,
@@ -25,11 +24,9 @@ import {
   User, 
   FileText, 
   MapPin, 
-  Clock,
   AlertCircle,
   Send,
   Trash2,
-  Edit,
   Check,
   X,
   ClipboardList
