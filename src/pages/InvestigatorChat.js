@@ -122,6 +122,7 @@ const InvestigatorChat = () => {
     if (!newMessage.trim() || !selectedChat || !auth.currentUser) return;
 
     const messagesRef = collection(db, 'chats', selectedChat.id, 'messages');
+    const chatsURef = collection(db, 'chatsU');
 
     try {
       // Update chat timestamp
@@ -129,13 +130,25 @@ const InvestigatorChat = () => {
         updatedAt: serverTimestamp()
       }, { merge: true });
 
-      // Add new message
-      await addDoc(messagesRef, {
+      // Add new message to chats/{chatId}/messages
+      const newMessageData = {
         senderId: auth.currentUser.uid,
         senderType: 'investigator',
         content: newMessage,
         timestamp: serverTimestamp(),
         read: true
+      };
+      
+      await addDoc(messagesRef, newMessageData);
+
+      // Also store the message in chatsU collection with the specified format
+      await addDoc(chatsURef, {
+        text: newMessage,
+        senderType: 'investigator',
+        senderId: auth.currentUser.uid,
+        receiverId: selectedChat.userId,
+        read: false, // This will be unread by user
+        timestamp: serverTimestamp()
       });
 
       setNewMessage('');
@@ -408,7 +421,8 @@ const InvestigatorChat = () => {
             </div>
           )}
         </div>
-      </div>  
+      </div>
+      <Footer />
     </>
   );
 };

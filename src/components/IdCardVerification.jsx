@@ -60,7 +60,7 @@ const VerificationStatusButton = ({ isVerified, onClick, idCardUrl }) => {
   };
 
   return (
-    <div className="fixed top-[125px] right-6 z-50">
+    <div className="absolute top-[125px] right-6 z-50">
       <button
         onClick={handleClick}
         className={`px-4 py-2 rounded-full text-sm font-medium ${

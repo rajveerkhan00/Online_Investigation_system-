@@ -47,6 +47,8 @@ const FIRSubmission = () => {
   const [showTrackInvestigation, setShowTrackInvestigation] = useState(false);
   const [sortBy, setSortBy] = useState("date");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const currentUser = auth.currentUser;
+  const currentUserId = currentUser ? currentUser.uid : null;
 
   useEffect(() => {
     const fetchFirs = async () => {
@@ -259,7 +261,7 @@ const FIRSubmission = () => {
       <Navbar />
       <Verify />
       <Chatbot />
-      <UserNot />
+      <UserNot currentUserId={currentUserId} />
       
       
       <ToastContainer position="top-right" autoClose={3000} />
