@@ -6,109 +6,157 @@ import {
   CheckCircle,
   User,
   Menu,
-  Search
+  Search,
+  X,
+  MessageSquare
 } from "lucide-react";
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Define navigation items
+  const navItems = [
+    { to: "/Investigator/Search/DB", icon: Search, text: "SearchDB" },
+    { to: "/Investigator/PendingFir", icon: FileText, text: "NewFIR" },
+    { to: "/Investigator/RunningFir", icon: Briefcase, text: "Active" },
+    { to: "/Investigator/SolvedFir", icon: CheckCircle, text: "Solved" },
+    { to: "/Investigator/UnSolvedFir", icon: CheckCircle, text: "Unsolved" },
+    { to: "/Investigator/RejectedFir", icon: CheckCircle, text: "Rejected" },
+    { to: "/Investigator/Profile", icon: User, text: "Profile" }
+  ];
+
+  // Compact Nav Item Component
+  const CompactNavItem = ({ to, icon: Icon, text, mobile = false }) => (
+    <Link
+      to={to}
+      className={`flex items-center ${mobile ? 'px-4 py-3' : 'px-3 py-2'} rounded-lg hover:bg-blue-600/50 transition-colors text-white`}
+      onClick={() => mobile && setMenuOpen(false)}
+    >
+      <Icon size={18} className="mr-2" />
+      <span className="text-sm">{text}</span>
+    </Link>
+  );
+
+  // Compact Chat Link Component
+  const CompactChatLink = ({ mobile = false }) => (
+    <Link
+      to="/investigator/Chat"
+      className={`flex items-center ${mobile ? 'px-4 py-3' : 'px-3 py-2'} rounded-lg bg-blue-600/30 hover:bg-blue-600/50 transition-colors text-white relative`}
+      onClick={() => mobile && setMenuOpen(false)}
+    >
+      <MessageSquare size={18} className="mr-2" />
+      <span className="text-sm">Chat</span>
+    </Link>
+  );
+
   return (
-    <header className="relative flex items-center justify-between p-4 bg-gray-500 shadow-md">
-      {/* Logo & Title */}
-      <div className="flex items-center space-x-2">
-        <img src="/favicon.webp" alt="Logo" className="w-10 h-10 rounded-full" />
-        <h1 className="text-lg font-bold text-white">Police Investigation System</h1>
-      </div>
-
-      {/* Hamburger Icon for Small Screens */}
-      <button 
-        className="lg:hidden text-white focus:outline-none" 
-        onClick={() => setMenuOpen(!menuOpen)}
-      >
-        <Menu size={28} />
-      </button>
-
-      {/* Navigation Links - Desktop */}
-      <nav className="hidden lg:flex space-x-6 text-sm font-medium text-white items-center">
-        {/* Chat Button - Desktop */}
-        <Link
-          to="/investigator/Chat"
-          className="flex items-center space-x-1 text-yellow-400 font-semibold hover:text-yellow-300 transition focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 p-2 rounded-md"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4.29-.98l-4.71 1.18 1.18-4.71A9.77 9.77 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+    <header className="relative z-50 w-full bg-gradient-to-r from-blue-700 to-blue-800 shadow-xl">
+      <div className="flex items-center justify-between py-2 px-2 sm:px-4 w-full">
+        {/* Left Side - Logo and Title */}
+        <div className="flex items-center min-w-0">
+          <Link to="/" className="flex items-center flex-shrink-0">
+            <img
+              src="/favicon.webp"
+              alt="Police Badge Logo"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-blue-300 shadow-lg"
             />
-          </svg>
-          <span className="font-bold text-sm">Chat</span>
-        </Link>
-        <NavItem to="/Investigator/Search/DB" icon={Search} text="Search DB" />
-        <NavItem to="/Investigator/PendingFir" icon={FileText} text="New FIR" />
-        <NavItem to="/Investigator/RunningFir" icon={Briefcase} text="Active Cases" />
-        <NavItem to="/Investigator/SolvedFir" icon={CheckCircle} text="Solved Cases" />
-        <NavItem to="/Investigator/UnSolvedFir" icon={CheckCircle} text="UnSolved Cases" />
-        <NavItem to="/Investigator/RejectedFir" icon={CheckCircle} text="Rejected Cases" />
-        <NavItem to="/Investigator/Profile" icon={User} text="My Profile" />
-      </nav>
-
-      {/* Mobile Menu - Slide In from Right */}
-      {menuOpen && (
-        <div className="absolute top-0 right-0 bg-gray-700 text-white w-auto p-4 space-y-4 shadow-lg z-50 transition-transform transform animate-slide-in">
-          <button className="absolute top-2 right-2 text-white" onClick={() => setMenuOpen(false)}>
-            ✖
-          </button>
-          {/* Chat Button - Mobile */}
-          <Link
-            to="/User/Chat"
-            className="flex items-center space-x-1 text-red-600 font-semibold hover:text-red-500 transition focus:ring-2 focus:ring-red-300 focus:ring-offset-2 p-2 rounded-md"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4.29-.98l-4.71 1.18 1.18-4.71A9.77 9.77 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-            <span className="font-bold text-sm">Chat</span>
+            <h1 className="ml-2 text-sm sm:text-base md:text-lg font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis text-white">
+              Police Investigation System
+            </h1>
           </Link>
-          <NavItem to="/Investigator/PendingFir" icon={FileText} text="New FIR" />
-          <NavItem to="/Investigator/RunningFir" icon={Briefcase} text="Active Cases" />
-          <NavItem to="/Investigator/SolvedFir" icon={CheckCircle} text="Solved Cases" />
-          <NavItem to="/Investigator/UnSolvedFir" icon={CheckCircle} text="UnSolved Cases" />
-          <NavItem to="/Investigator/RejectedFir" icon={CheckCircle} text="Rejected Cases" />
-          <NavItem to="/Investigator/Profile" icon={User} text="My Profile" />
-          <NavItem to="/Investigator/Search/DB" icon={Search} text="Search" />
         </div>
-      )}
+
+        {/* Right Side - All Navigation Items */}
+        <div className="flex items-center space-x-1 sm:space-x-2">
+          {/* Desktop Navigation - Hidden on mobile */}
+          <nav className="hidden md:flex items-center space-x-1">
+            {navItems.map((item) => (
+              <CompactNavItem 
+                key={item.to}
+                to={item.to}
+                icon={item.icon}
+                text={item.text}
+              />
+            ))}
+            <div className="relative">
+              <CompactChatLink />
+              <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse border border-white transform translate-x-1 -translate-y-1"></span>
+            </div>
+          </nav>
+
+          {/* Mobile Search and New FIR - Hidden on desktop */}
+          <div className="flex md:hidden items-center space-x-1">
+            <Link 
+              to="/Investigator/Search/DB" 
+              className="p-1 rounded-lg hover:bg-blue-600/50 transition-colors text-white"
+              aria-label="Search"
+            >
+              <Search size={20} />
+            </Link>
+            <Link 
+              to="/Investigator/PendingFir" 
+              className="p-1 rounded-lg hover:bg-blue-600/50 transition-colors text-white"
+              aria-label="New FIR"
+            >
+              <FileText size={20} />
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden text-white focus:outline-none p-1 rounded-full hover:bg-blue-600 transition-colors"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? (
+              <X size={20} className="text-blue-100" />
+            ) : (
+              <Menu size={20} className="text-blue-100" />
+            )}
+          </button>
+        </div>
+
+        {/* Mobile Menu Overlay */}
+        {menuOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-80 md:hidden backdrop-blur-sm z-40"
+            onClick={() => setMenuOpen(false)}
+          >
+            <div
+              className="absolute right-0 top-0 h-full w-4/5 bg-gradient-to-b from-blue-800 to-blue-900 text-white shadow-2xl p-4 overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-blue-600 pb-4">
+                <span className="text-lg font-bold">Menu</span>
+                <button 
+                  onClick={() => setMenuOpen(false)} 
+                  className="p-1 rounded-full hover:bg-blue-700 transition-colors"
+                >
+                  <X size={20} className="text-blue-100" />
+                </button>
+              </div>
+
+              <div className="flex flex-col space-y-4">
+                {navItems.map((item) => (
+                  <CompactNavItem 
+                    key={item.to}
+                    to={item.to}
+                    icon={item.icon}
+                    text={item.text}
+                    mobile
+                  />
+                ))}
+                <div className="relative">
+                  <CompactChatLink mobile />
+                  <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-red-500 animate-pulse border border-white"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
-
-// Reusable Navigation Link Component
-const NavItem = ({ to, icon: Icon, text }) => (
-  <Link 
-    to={to} 
-    className="flex items-center space-x-2 hover:text-gray-300 transition"
-  >
-    <Icon size={20} />
-    <span>{text}</span>
-  </Link>
-);
 
 export default Header;

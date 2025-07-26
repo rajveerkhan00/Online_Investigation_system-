@@ -3,13 +3,13 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Headeri from "../components/Headeri";
 import Footer from "../components/Footeri";
-import Navbari from "../components/Navbari";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, updateDoc, setDoc, query, where, getDoc } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
-import { ChevronDown, Calendar, Flag } from "lucide-react";
+import { ChevronDown, Calendar, Flag,  FileText } from "lucide-react";
 import InveNot from "../components/InveNot";
 import { useNavigate } from "react-router-dom";
+
 
 const FIRSubmission = () => {
   const [firs, setFirs] = useState([]);
@@ -699,364 +699,402 @@ const FIRSubmission = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-300">
-      <Headeri />
-      <Navbari />
-      <InveNot />
-      <ToastContainer position="top-right" autoClose={3000} />
+  <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-100 to-gray-200">
+  <Headeri />
+  <InveNot />
+  <ToastContainer position="top-right" autoClose={3000} />
 
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-          FIR Cases Management System
-        </h1>
-        
-        <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
-          <div className="relative w-40 sm:w-20">
-            <button
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className="flex items-center justify-between sm:justify-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-md shadow-md hover:bg-gray-800 transition duration-300 w-full sm:w-auto text-xs sm:text-base"
-            >
-              Sort <ChevronDown size={10} className="sm:size-18" />
-            </button>
+  <main className="flex-grow container mx-auto px-4 py-8">
+   <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-semibold text-center mb-6 sm:mb-8 mt-4 sm:mt-8 font-serif tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600">
+  FIR Cases Management System
+</h1>
 
-            {showSortDropdown && (
-              <div className="absolute right-0 mt-2 w-full sm:w-48 bg-gray-800 text-white rounded-lg shadow-lg z-10 animate-fade-in">
+    
+   <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-2 sm:px-4">
+  <div className="relative w-40 sm:w-48">
+    <button
+      onClick={() => setShowSortDropdown(!showSortDropdown)}
+      className="flex items-center justify-between gap-2 bg-gradient-to-r from-blue-700 to-blue-600 text-white px-3 py-2 rounded-md shadow-md hover:from-blue-800 hover:to-blue-700 transition-all duration-300 w-full text-xs sm:text-sm font-medium"
+    >
+      Sort Options
+      <ChevronDown
+        size={14}
+        className="transition-transform duration-200"
+        style={{ transform: showSortDropdown ? 'rotate(180deg)' : 'none' }}
+      />
+    </button>
+
+    {showSortDropdown && (
+      <div className="absolute right-0 mt-1 w-full sm:w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10 animate-fade-in">
+        <button
+          onClick={() => {
+            setSortBy("date");
+            setShowSortDropdown(false);
+          }}
+          className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-200 border-b border-gray-100"
+        >
+          <Calendar size={14} className="text-blue-600" /> Sort by Date
+        </button>
+        <button
+          onClick={() => {
+            setSortBy("priority");
+            setShowSortDropdown(false);
+          }}
+          className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-200"
+        >
+          <Flag size={14} className="text-red-600" /> Sort by Priority
+        </button>
+      </div>
+    )}
+  </div>
+</div>
+
+    
+    <div className="mt-12 space-y-16">
+      <div className="mb-12">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-10 w-1 bg-blue-600 rounded-full"></div>
+          <h2 className="text-2xl sm:text-3xl md:text-3xl font-bold text-gray-800 font-sans">
+            Pending Cases <span className="text-blue-600">({firs.filter((f) => f?.status === "Pending").length})</span>
+          </h2>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <TailSpin color="#3b82f6" height={60} width={60} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {renderFIRsByStatus("Pending")}
+          </div>
+        )}
+      </div>
+
+      <div className="mb-12">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-10 w-1 bg-yellow-500 rounded-full"></div>
+          <h2 className="text-2xl sm:text-3xl md:text-3xl font-bold text-gray-800 font-sans">
+            Active Cases <span className="text-yellow-600">({firs.filter((f) => f?.status === "Active").length})</span>
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {renderFIRsByStatus("Active")}
+        </div>
+      </div>
+
+      <div className="mb-12">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-10 w-1 bg-green-500 rounded-full"></div>
+          <h2 className="text-2xl sm:text-3xl md:text-3xl font-bold text-gray-800 font-sans">
+            Solved Cases <span className="text-green-600">({firs.filter((f) => f?.status === "Solved").length})</span>
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {renderFIRsByStatus("Solved")}
+        </div>
+      </div>
+
+      <div className="mb-12">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-10 w-1 bg-red-500 rounded-full"></div>
+          <h2 className="text-2xl sm:text-3xl md:text-3xl font-bold text-gray-800 font-sans">
+            UnSolved Cases <span className="text-red-600">({firs.filter((f) => f?.status === "UnSolved").length})</span>
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {renderFIRsByStatus("UnSolved")}
+        </div>
+      </div>
+
+      <div className="mb-12">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-10 w-1 bg-gray-500 rounded-full"></div>
+          <h2 className="text-2xl sm:text-3xl md:text-3xl font-bold text-gray-800 font-sans">
+            Rejected Cases <span className="text-gray-600">({firs.filter((f) => f?.status === "Rejected").length})</span>
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {renderFIRsByStatus("Rejected")}
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {/* Modals remain the same but with enhanced colors */}
+  {showReasonModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">Provide Reason for {currentStatus}</h2>
+        <textarea
+          value={reasonText}
+          onChange={(e) => setReasonText(e.target.value)}
+          className="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          rows={5}
+          placeholder={`Enter reason for marking this case as ${currentStatus}...`}
+        />
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={() => setShowReasonModal(false)}
+            className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={saveReason}
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md"
+          >
+            Save Reason
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {showReopenModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">Provide Reason for Reopening Case</h2>
+        <textarea
+          value={reasonText}
+          onChange={(e) => setReasonText(e.target.value)}
+          className="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          rows={5}
+          placeholder="Enter reason for reopening this case..."
+        />
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={() => setShowReopenModal(false)}
+            className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleReopenCase}
+            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors font-medium shadow-md"
+          >
+            Reopen Case
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {showInvestigationForm && (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative pb-20 shadow-2xl border border-gray-200">
+        <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-4">Investigation Form</h2>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <TailSpin color="#3b82f6" height={60} width={60} />
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-6 bg-blue-50 p-4 rounded-xl">
+              <div className="w-full">
+                <h3 className="text-lg font-semibold mb-3 text-gray-700">
+                  Investigation Progress: <span className="text-blue-600">{calculateProgress().toFixed(2)}%</span>
+                </h3>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500"
+                    style={{ width: `${calculateProgress()}%` }}
+                  ></div>
+                </div>
+              </div>
+              {stepsSource === "default" && (
                 <button
-                  onClick={() => {
-                    setSortBy("date");
-                    setShowSortDropdown(false);
-                  }}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
+                  onClick={handleGenerateNewSteps}
+                  disabled={generatingSteps}
+                  className="ml-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-5 py-2.5 rounded-lg hover:from-purple-600 hover:to-purple-700 flex items-center shadow-md whitespace-nowrap"
                 >
-                  <Calendar size={16} /> Sort by Date
-                </button>
-                <button
-                  onClick={() => {
-                    setSortBy("priority");
-                    setShowSortDropdown(false);
-                  }}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition duration-200"
-                >
-                  <Flag size={16} /> Sort by Priority
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="mt-12">
-          <div className="mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Pending Cases ({firs.filter((f) => f?.status === "Pending").length})
-            </h2>
-            {loading ? (
-              <div className="flex justify-center">
-                <TailSpin color="#6366f1" height={50} width={50} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {renderFIRsByStatus("Pending")}
-              </div>
-            )}
-          </div>
-
-          <div className="mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Active Cases ({firs.filter((f) => f?.status === "Active").length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderFIRsByStatus("Active")}
-            </div>
-          </div>
-
-          <div className="mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Solved Cases ({firs.filter((f) => f?.status === "Solved").length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderFIRsByStatus("Solved")}
-            </div>
-          </div>
-
-          <div className="mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              UnSolved Cases ({firs.filter((f) => f?.status === "UnSolved").length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderFIRsByStatus("UnSolved")}
-            </div>
-          </div>
-
-          <div className="mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-left mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Rejected Cases ({firs.filter((f) => f?.status === "Rejected").length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderFIRsByStatus("Rejected")}
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {showReasonModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Provide Reason for {currentStatus}</h2>
-            <textarea
-              value={reasonText}
-              onChange={(e) => setReasonText(e.target.value)}
-              className="w-full p-3 border rounded mb-4"
-              rows={5}
-              placeholder={`Enter reason for marking this case as ${currentStatus}...`}
-            />
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowReasonModal(false)}
-                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveReason}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Save Reason
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showReopenModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Provide Reason for Reopening Case</h2>
-            <textarea
-              value={reasonText}
-              onChange={(e) => setReasonText(e.target.value)}
-              className="w-full p-3 border rounded mb-4"
-              rows={5}
-              placeholder="Enter reason for reopening this case..."
-            />
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowReopenModal(false)}
-                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReopenCase}
-                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-              >
-                Reopen Case
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showInvestigationForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative pb-20">
-            <h2 className="text-2xl font-bold mb-6">Investigation Form</h2>
-            {loading ? (
-              <div className="flex justify-center">
-                <TailSpin color="#6366f1" height={50} width={50} />
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">
-                      Progress: {calculateProgress().toFixed(2)}%
-                    </h3>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${calculateProgress()}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  {stepsSource === "default" && (
-                    <button
-                      onClick={handleGenerateNewSteps}
-                      disabled={generatingSteps}
-                      className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 flex items-center"
-                    >
-                      {generatingSteps ? (
-                        <>
-                          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
-                          Generating...
-                        </>
-                      ) : (
-                        "Generate New Steps"
-                      )}
-                    </button>
+                  {generatingSteps ? (
+                    <>
+                      <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate New Steps"
                   )}
-                </div>
-                <div className="mb-4 p-3 bg-blue-50 rounded">
-                  <p className="text-sm text-blue-800">
-                    {stepsSource === "generated" 
-                      ? "These steps were dynamically generated for this case type." 
-                      : stepsSource === "default" 
-                        ? "Using default investigation steps (could not generate specific steps)." 
-                        : "Loading investigation steps..."}
-                  </p>
-                </div>
-                {investigationSteps.map((phase, phaseIndex) => (
-                  <div key={phaseIndex} className="mb-6">
-                    <h3 className="text-xl font-semibold mb-4">{phase?.phase || `Phase ${phaseIndex + 1}`}</h3>
-                    {phase?.steps?.map((step, stepIndex) => (
-                      <div key={stepIndex} className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {step || `Step ${stepIndex + 1}`}
-                        </label>
-                        <textarea
-                          value={investigationData[phaseIndex]?.[stepIndex] || ""}
-                          onChange={(e) =>
-                            handleInputChange(phaseIndex, stepIndex, e.target.value)
-                          }
-                          className="mt-1 p-2 w-full border rounded-md"
-                          rows={3}
-                        />
-                      </div>
-                    ))}
+                </button>
+              )}
+            </div>
+            <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <p className="text-sm text-blue-800 font-medium">
+                {stepsSource === "generated" 
+                  ? "🔍 These steps were dynamically generated for this case type." 
+                  : stepsSource === "default" 
+                    ? "ℹ️ Using default investigation steps (could not generate specific steps)." 
+                    : "Loading investigation steps..."}
+              </p>
+            </div>
+            {investigationSteps.map((phase, phaseIndex) => (
+              <div key={phaseIndex} className="mb-8 bg-gray-50 p-5 rounded-xl border border-gray-200">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">{phaseIndex + 1}</span>
+                  {phase?.phase || `Phase ${phaseIndex + 1}`}
+                </h3>
+                {phase?.steps?.map((step, stepIndex) => (
+                  <div key={stepIndex} className="mb-5">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {step || `Step ${stepIndex + 1}`}
+                    </label>
+                    <textarea
+                      value={investigationData[phaseIndex]?.[stepIndex] || ""}
+                      onChange={(e) =>
+                        handleInputChange(phaseIndex, stepIndex, e.target.value)
+                      }
+                      className="mt-1 p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={4}
+                    />
                   </div>
                 ))}
-                
-                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-                  <div className="flex items-center space-x-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-                    <button
-                      onClick={() => setShowInvestigationForm(false)}
-                      className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSaveInvestigation}
-                      disabled={saveLoading}
-                      className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
-                    >
-                      {saveLoading ? (
-                        <>
-                          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
-                          Saving...
-                        </>
-                      ) : (
-                        "Save Investigation"
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showModal && selectedFIR && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">FIR Details</h2>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Complainant Information</h3>
-              <p>
-                <strong>Name:</strong> {selectedFIR.complainantName || 'N/A'}
-              </p>
-              <p>
-                <strong>Contact Number:</strong> {selectedFIR.contactNumber || 'N/A'}
-              </p>
-              <p>
-                <strong>Email:</strong> {selectedFIR.email || 'N/A'}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Incident Details</h3>
-              <p>
-                <strong>Type:</strong> {selectedFIR.incidentType || 'N/A'}
-              </p>
-              <p>
-                <strong>Date & Time:</strong>{" "}
-                {selectedFIR.incidentDateTime ? new Date(selectedFIR.incidentDateTime).toLocaleString() : 'N/A'}
-              </p>
-              <p>
-                <strong>Description:</strong> {selectedFIR.incidentDescription || 'N/A'}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Location Details</h3>
-              <p>
-                <strong>Address:</strong> {selectedFIR.incidentLocation?.address || 'N/A'}
-              </p>
-              <p>
-                <strong>City:</strong> {selectedFIR.incidentLocation?.city || 'N/A'}
-              </p>
-              <p>
-                <strong>State:</strong> {selectedFIR.incidentLocation?.state || 'N/A'}
-              </p>
-              <p>
-                <strong>GPS Coordinates:</strong>{" "}
-                {selectedFIR.incidentLocation?.gpsCoordinates || 'N/A'}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Suspect Information</h3>
-              <p>
-                <strong>Name:</strong> {selectedFIR.suspectDetails?.name || 'N/A'}
-              </p>
-              <p>
-                <strong>Description:</strong>{" "}
-                {selectedFIR.suspectDetails?.description || 'N/A'}
-              </p>
-              <p>
-                <strong>Known Address:</strong>{" "}
-                {selectedFIR.suspectDetails?.knownAddress || 'N/A'}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Witness Information</h3>
-              <p>
-                <strong>Name:</strong> {selectedFIR.witnessDetails?.name || 'N/A'}
-              </p>
-              <p>
-                <strong>Contact:</strong> {selectedFIR.witnessDetails?.contact || 'N/A'}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4">Supporting Documents</h3>
-              <div className="space-y-2">
-                {selectedFIR.supportingDocuments?.length > 0 ? (
-                  selectedFIR.supportingDocuments.map((url, index) => (
-                    <div key={index} className="text-blue-600">
-                      <a href={url} target="_blank" rel="noopener noreferrer">
-                        Document {index + 1}
-                      </a>
-                    </div>
-                  ))
-                ) : (
-                  <p>No supporting documents</p>
-                )}
+              </div>
+            ))}
+            
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+              <div className="flex items-center space-x-4 bg-white p-4 rounded-xl shadow-xl border border-gray-200">
+                <button
+                  onClick={() => setShowInvestigationForm(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveInvestigation}
+                  disabled={saveLoading}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors font-medium shadow-md flex items-center justify-center"
+                >
+                  {saveLoading ? (
+                    <>
+                      <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Investigation"
+                  )}
+                </button>
               </div>
             </div>
+          </>
+        )}
+      </div>
+    </div>
+  )}
 
-            <button
-              onClick={closeModal}
-              className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
-            >
-              Close
-            </button>
+  {showModal && selectedFIR && (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+        <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-4">FIR Details</h2>
+
+        <div className="space-y-8">
+          <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
+            <h3 className="text-xl font-semibold mb-4 text-blue-800">Complainant Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.complainantName || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Contact Number:</span> {selectedFIR.contactNumber || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Email:</span> {selectedFIR.email || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 p-5 rounded-xl border border-yellow-100">
+            <h3 className="text-xl font-semibold mb-4 text-yellow-800">Incident Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Type:</span> {selectedFIR.incidentType || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Date & Time:</span> {selectedFIR.incidentDateTime ? new Date(selectedFIR.incidentDateTime).toLocaleString() : 'N/A'}</p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="text-gray-700"><span className="font-medium">Description:</span> {selectedFIR.incidentDescription || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-green-50 p-5 rounded-xl border border-green-100">
+            <h3 className="text-xl font-semibold mb-4 text-green-800">Location Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Address:</span> {selectedFIR.incidentLocation?.address || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">City:</span> {selectedFIR.incidentLocation?.city || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">State:</span> {selectedFIR.incidentLocation?.state || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">GPS Coordinates:</span> {selectedFIR.incidentLocation?.gpsCoordinates || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-red-50 p-5 rounded-xl border border-red-100">
+            <h3 className="text-xl font-semibold mb-4 text-red-800">Suspect Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.suspectDetails?.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Description:</span> {selectedFIR.suspectDetails?.description || 'N/A'}</p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="text-gray-700"><span className="font-medium">Known Address:</span> {selectedFIR.suspectDetails?.knownAddress || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 p-5 rounded-xl border border-purple-100">
+            <h3 className="text-xl font-semibold mb-4 text-purple-800">Witness Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.witnessDetails?.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-700"><span className="font-medium">Contact:</span> {selectedFIR.witnessDetails?.contact || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+            <h3 className="text-xl font-semibold mb-4 text-gray-800">Supporting Documents</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {selectedFIR.supportingDocuments?.length > 0 ? (
+                selectedFIR.supportingDocuments.map((url, index) => (
+                  <a 
+                    key={index} 
+                    href={url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                  >
+                    <FileText size={16} className="text-blue-600" />
+                    <span className="text-blue-600 font-medium">Document {index + 1}</span>
+                  </a>
+                ))
+              ) : (
+                <p className="text-gray-500">No supporting documents</p>
+              )}
+            </div>
           </div>
         </div>
-      )}
-      <Footer />
+
+        <button
+          onClick={closeModal}
+          className="mt-8 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium w-full sm:w-auto"
+        >
+          Close Details
+        </button>
+      </div>
     </div>
+  )}
+  <Footer />
+</div>
   );
 };
 
