@@ -5,7 +5,6 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import Headeri from "../components/Headeri";
 import Footer from "../components/Footeri";
-import Navbari from "../components/Navbari";
 import InveNot from "../components/InveNot";
 import * as faceapi from "face-api.js";
 
@@ -231,7 +230,6 @@ const AdminSearchUsers = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       <Headeri />
-      <Navbari />
       <InveNot />
       <ToastContainer position="top-right" autoClose={3000} />
 
