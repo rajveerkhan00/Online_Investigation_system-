@@ -19,89 +19,64 @@ const AdminSearchUsers = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  // Load face-api.js models with enhanced error handling
   useEffect(() => {
     const loadModels = async () => {
       try {
-        console.log("Starting model loading process...");
-        
-        // First try loading from local public/models directory
         const localModelUrl = process.env.PUBLIC_URL + "/models";
-        console.log("Attempting to load models from:", localModelUrl);
-        
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(localModelUrl),
           faceapi.nets.faceLandmark68Net.loadFromUri(localModelUrl),
           faceapi.nets.faceRecognitionNet.loadFromUri(localModelUrl)
         ]);
-        
         setModelsLoaded(true);
-        console.log("Models loaded successfully from local directory");
       } catch (localError) {
-        console.error("Local model loading failed:", localError);
-        
-        // If local loading fails, try loading from CDN
         try {
-          console.log("Attempting to load models from CDN...");
           const cdnModelUrl = 'https://justadudewhohacks.github.io/face-api.js/models';
-          
           await Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri(cdnModelUrl),
             faceapi.nets.faceLandmark68Net.loadFromUri(cdnModelUrl),
             faceapi.nets.faceRecognitionNet.loadFromUri(cdnModelUrl)
           ]);
-          
           setModelsLoaded(true);
-          console.log("Models loaded successfully from CDN");
         } catch (cdnError) {
-          console.error("CDN model loading failed:", cdnError);
           setLoadingError(`Failed to load models from both local and CDN sources. ${cdnError.message}`);
           toast.error("Face detection unavailable. Please check console for details.");
         }
       }
     };
-
     loadModels();
   }, []);
 
-  // Handle CNIC Search
   const handleCnicSearch = async (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) {
       toast.error("Please enter a CNIC number");
       return;
     }
-
     if (searchTerm.length !== 13 || !/^\d+$/.test(searchTerm)) {
       toast.error("Please enter a valid 13-digit CNIC number");
       return;
     }
-
     setIsSearching(true);
-
     try {
       const usersRef = collection(db, "AdminAddedUsers");
       const q = query(usersRef, where("idCardNumber", "==", searchTerm));
       const querySnapshot = await getDocs(q);
-
       const results = [];
       querySnapshot.forEach((doc) => {
         results.push({ id: doc.id, ...doc.data() });
       });
-
       setSearchResults(results);
       if (results.length === 0) {
         toast.info("No users found with this CNIC number");
       }
     } catch (error) {
-      console.error("Error searching users:", error);
       toast.error("Failed to search users");
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Handle image change
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -110,98 +85,68 @@ const AdminSearchUsers = () => {
     }
   };
 
-  // Handle face image search with model verification
   const handleImageSearch = async (e) => {
     e.preventDefault();
-    
     if (!faceImage) {
       toast.error("Please select an image to search");
       return;
     }
-    
     if (!modelsLoaded) {
       toast.error("Face detection models are still loading. Please wait.");
       return;
     }
-    
     if (loadingError) {
       toast.error("Face detection is unavailable due to loading error");
       return;
     }
-
     setIsSearching(true);
-
     try {
-      // Convert image to format face-api.js can process
       const image = await faceapi.bufferToImage(faceImage);
-      
-      // Verify models are properly loaded
       if (!faceapi.nets.tinyFaceDetector.params) {
         throw new Error("Face detection model not properly initialized");
       }
-
-      // Detect face with enhanced options
       const detection = await faceapi
         .detectSingleFace(image, new faceapi.TinyFaceDetectorOptions({
-          inputSize: 512,  // Higher resolution for better accuracy
+          inputSize: 512,
           scoreThreshold: 0.5
         }))
         .withFaceLandmarks()
         .withFaceDescriptor();
-
       if (!detection) {
         toast.error("No face detected in the uploaded image. Please try a clearer photo.");
         setIsSearching(false);
         return;
       }
-
       const uploadedDescriptor = detection.descriptor;
-
-      // Get all users from Firestore
       const usersRef = collection(db, "AdminAddedUsers");
       const querySnapshot = await getDocs(usersRef);
-
       const allUsers = [];
       querySnapshot.forEach((doc) => {
         allUsers.push({ id: doc.id, ...doc.data() });
       });
-
       const matches = [];
-
-      // Compare with each user's face
       for (let user of allUsers) {
         if (!user.faceImageUrl) continue;
-
         try {
           const img = await faceapi.fetchImage(user.faceImageUrl);
           const userDetection = await faceapi
             .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
             .withFaceLandmarks()
             .withFaceDescriptor();
-
           if (!userDetection) continue;
-
-          // Calculate similarity (lower distance = more similar)
           const distance = faceapi.euclideanDistance(
             uploadedDescriptor,
             userDetection.descriptor
           );
-
-          // Threshold for considering a match (0.6 is standard)
           if (distance < 0.6) {
             matches.push({
               ...user,
-              matchScore: (1 - distance).toFixed(2)  // Add match score (0-1)
+              matchScore: (1 - distance).toFixed(2)
             });
           }
-        } catch (err) {
-          console.error("Error processing user image:", user.faceImageUrl, err);
-        }
+        } catch (err) {}
       }
-
-      // Sort matches by highest score first
       matches.sort((a, b) => b.matchScore - a.matchScore);
-
       if (matches.length > 0) {
         setSearchResults(matches);
         toast.success(`Found ${matches.length} matching user(s)`);
@@ -210,7 +155,6 @@ const AdminSearchUsers = () => {
         toast.info("No matching users found. Try a different photo.");
       }
     } catch (error) {
-      console.error("Face comparison failed:", error);
       toast.error(`Error matching face: ${error.message}`);
     } finally {
       setIsSearching(false);
@@ -247,7 +191,6 @@ const AdminSearchUsers = () => {
               Loading face detection models (may take up to 1 minute)...
             </div>
           )}
-          
           {loadingError && (
             <div className="p-4 bg-red-50 text-red-700 rounded-md">
               <div className="font-bold">⚠️ Face Detection Unavailable</div>

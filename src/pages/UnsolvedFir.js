@@ -6,10 +6,9 @@ import Footer from "../components/Footeri";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, updateDoc, setDoc, query, where, getDoc } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
-import { ChevronDown, Calendar, Flag,  FileText } from "lucide-react";
+import { ChevronDown, Calendar, Flag, FileText } from "lucide-react";
 import InveNot from "../components/InveNot";
 import { useNavigate } from "react-router-dom";
-
 
 const FIRSubmission = () => {
   const [firs, setFirs] = useState([]);
@@ -40,10 +39,9 @@ const FIRSubmission = () => {
     const checkAuthState = () => {
       const currentTime = Date.now();
       const inactiveTime = currentTime - lastActivity;
-      const timeoutDuration = 5 * 60 * 1000; // 5 minutes in milliseconds
+      const timeoutDuration = 5 * 60 * 1000; // 5 minutes
 
       if (inactiveTime > timeoutDuration) {
-        // User has been inactive for more than 5 minutes
         auth.signOut().then(() => {
           toast.info("Session expired due to inactivity. Please log in again.");
           navigate("/investigator/login");
@@ -53,10 +51,8 @@ const FIRSubmission = () => {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Tab is active again, check if we need to log out
         checkAuthState();
       } else {
-        // Tab is inactive, update last activity time
         setLastActivity(Date.now());
       }
     };
@@ -65,18 +61,15 @@ const FIRSubmission = () => {
       setLastActivity(Date.now());
     };
 
-    // Set up event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('keydown', handleActivity);
     window.addEventListener('scroll', handleActivity);
     window.addEventListener('click', handleActivity);
 
-    // Check auth state every minute
     const interval = setInterval(checkAuthState, 60 * 1000);
 
     return () => {
-      // Clean up event listeners
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('mousemove', handleActivity);
       window.removeEventListener('keydown', handleActivity);
@@ -91,11 +84,8 @@ const FIRSubmission = () => {
       setLoading(true);
 
       if (!user) {
-        // Only redirect if this is not a page reload
-        if (performance.navigation.type !== performance.navigation.TYPE_RELOAD) {
-          toast.error("Please log in to view your cases.");
-          navigate("/user/login");
-        }
+        toast.error("Please log in to view your cases.");
+        navigate("/user/login");
         setLoading(false);
         return;
       }
@@ -105,13 +95,11 @@ const FIRSubmission = () => {
           collection(db, "firs"),
           where("assignedInvestigator", "==", user.uid)
         );
-
         const querySnapshot = await getDocs(q);
         const firData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-
         setFirs(firData);
       } catch (error) {
         toast.error("Failed to fetch FIRs");
@@ -139,7 +127,6 @@ const FIRSubmission = () => {
           console.error("Error fetching investigation data:", error);
         }
       };
-
       fetchInvestigationData();
     }
   }, [activeCaseId]);
@@ -214,9 +201,7 @@ const FIRSubmission = () => {
 
   const getInvestigationSteps = async (caseId, incidentType) => {
     try {
-      // First try to get generated steps from Firestore
       const investigationDoc = await getDoc(doc(db, "investigations", incidentType));
-      
       if (investigationDoc.exists()) {
         return {
           steps: investigationDoc.data().steps,
@@ -224,13 +209,9 @@ const FIRSubmission = () => {
           firId: investigationDoc.data().firId || null
         };
       }
-
-      // If not found, try to generate new steps using Gemini API
       try {
         const generatedSteps = await generateInvestigationSteps(incidentType);
-        
         if (generatedSteps && generatedSteps.length > 0) {
-          // Save the generated steps for future use
           await setDoc(doc(db, "investigations", incidentType), {
             steps: generatedSteps,
             firId: caseId,
@@ -246,7 +227,6 @@ const FIRSubmission = () => {
         }
       } catch (error) {
         console.error("Failed to generate steps, using defaults. Error:", error.message);
-        // Save error information for debugging
         await setDoc(doc(db, "generationErrors", `${incidentType}_${Date.now()}`), {
           incidentType,
           firId: caseId,
@@ -254,8 +234,6 @@ const FIRSubmission = () => {
           timestamp: new Date()
         });
       }
-
-      // Fall back to default steps if generation fails
       await setDoc(doc(db, "investigations", incidentType), {
         steps: DEFAULT_INVESTIGATION_STEPS,
         firId: caseId,
@@ -263,7 +241,6 @@ const FIRSubmission = () => {
         createdAt: new Date(),
         usedDefault: true
       });
-      
       return {
         steps: DEFAULT_INVESTIGATION_STEPS,
         source: "default",
@@ -281,15 +258,12 @@ const FIRSubmission = () => {
   };
 
   const generateInvestigationSteps = async (incidentType) => {
-    // This would be replaced with actual API call to Gemini or similar service
-    // For now, we'll return the default steps
     return DEFAULT_INVESTIGATION_STEPS;
   };
 
   const generateNewSteps = async (caseId, incidentType) => {
     try {
       const generatedSteps = await generateInvestigationSteps(incidentType);
-      
       if (generatedSteps && generatedSteps.length > 0) {
         await setDoc(doc(db, "investigations", incidentType), {
           steps: generatedSteps,
@@ -307,7 +281,6 @@ const FIRSubmission = () => {
       throw new Error("Failed to generate steps: empty response");
     } catch (error) {
       console.error("Error generating new steps:", error);
-      // Save error information for debugging
       await setDoc(doc(db, "generationErrors", `${incidentType}_${Date.now()}`), {
         incidentType,
         firId: caseId,
@@ -352,21 +325,17 @@ const FIRSubmission = () => {
       toast.error("Please enter a reason");
       return;
     }
-
     try {
       const updateData = {
         status: currentStatus,
         [`${currentStatus.toLowerCase()}Reason`]: reasonText
       };
-
       if (oldStatus === "Rejected") {
         updateData.rejectedReason = null;
       } else if (oldStatus === "UnSolved") {
         updateData.unsolvedReason = null;
       }
-
       await updateDoc(doc(db, "firs", currentCaseId), updateData);
-
       setFirs((prev) =>
         prev.map((f) => {
           if (f.id === currentCaseId) {
@@ -385,7 +354,6 @@ const FIRSubmission = () => {
           return f;
         })
       );
-
       toast.success(`Case marked as ${currentStatus} with reason`);
       setShowReasonModal(false);
     } catch (error) {
@@ -399,14 +367,12 @@ const FIRSubmission = () => {
       toast.error("Please enter a reason for reopening the case");
       return;
     }
-
     try {
       await updateDoc(doc(db, "firs", currentCaseId), {
         status: "Active",
         reopenReason: reasonText,
         unsolvedReason: null
       });
-
       setFirs((prev) =>
         prev.map((f) => {
           if (f.id === currentCaseId) {
@@ -421,7 +387,6 @@ const FIRSubmission = () => {
           return f;
         })
       );
-
       toast.success("Case reopened successfully");
       setShowReopenModal(false);
     } catch (error) {
@@ -454,11 +419,9 @@ const FIRSubmission = () => {
     try {
       setGeneratingSteps(true);
       const { steps, source, error } = await generateNewSteps(activeCaseId, activeCaseType);
-      
       if (error || !steps || !Array.isArray(steps)) {
         throw new Error(error || "Invalid steps data received");
       }
-
       setInvestigationSteps(steps);
       setStepsSource(source);
       toast.success("Successfully generated new investigation steps");
@@ -479,10 +442,8 @@ const FIRSubmission = () => {
 
   const calculateProgress = () => {
     if (!investigationSteps || !Array.isArray(investigationSteps)) return 0;
-    
     let completedSteps = 0;
     let totalSteps = 0;
-
     investigationSteps.forEach((phase, phaseIndex) => {
       if (phase?.steps && Array.isArray(phase.steps)) {
         phase.steps.forEach((_, stepIndex) => {
@@ -493,7 +454,6 @@ const FIRSubmission = () => {
         });
       }
     });
-
     return totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
   };
 
@@ -501,7 +461,6 @@ const FIRSubmission = () => {
     setSaveLoading(true);
     try {
       await saveInvestigationProgress(activeCaseId, investigationData);
-
       const progress = calculateProgress();
       if (progress === 100) {
         await updateDoc(doc(db, "firs", activeCaseId), { status: "Solved" });
@@ -527,18 +486,14 @@ const FIRSubmission = () => {
       openReasonModal(firId, newStatus, oldStatus);
       return;
     }
-
     try {
       const updateData = { status: newStatus };
-      
       if (oldStatus === "Rejected") {
         updateData.rejectedReason = null;
       } else if (oldStatus === "UnSolved") {
         updateData.unsolvedReason = null;
       }
-
       await updateDoc(doc(db, "firs", firId), updateData);
-      
       setFirs((prev) =>
         prev.map((f) => {
           if (f.id === firId) {
@@ -553,7 +508,6 @@ const FIRSubmission = () => {
           return f;
         })
       );
-      
       toast.success("Status updated successfully");
     } catch (error) {
       toast.error("Failed to update status");
@@ -590,7 +544,6 @@ const FIRSubmission = () => {
 
   const sortFirs = (firs, sortBy) => {
     if (!firs || !Array.isArray(firs)) return [];
-    
     return [...firs].sort((a, b) => {
       if (sortBy === "date") {
         return new Date(a.incidentDateTime || 0) - new Date(b.incidentDateTime || 0);
@@ -604,11 +557,9 @@ const FIRSubmission = () => {
   const renderFIRsByStatus = (status) => {
     const filteredFirs = firs.filter((fir) => fir?.status === status);
     const sortedFirs = sortFirs(filteredFirs, sortBy);
-
     if (sortedFirs.length === 0) {
       return <div className="text-gray-500">No {status} cases found</div>;
     }
-
     return sortedFirs.map((fir) => (
       <div key={fir.id} className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-start mb-4">
@@ -640,21 +591,18 @@ const FIRSubmission = () => {
             />
           ))}
         </div>
-        
         {(fir.status === "Rejected" || fir.status === "UnSolved") && fir[`${fir.status.toLowerCase()}Reason`] && (
           <div className="mt-4 p-3 bg-gray-100 rounded">
             <p className="font-semibold">{fir.status} Reason:</p>
             <p>{fir[`${fir.status.toLowerCase()}Reason`]}</p>
           </div>
         )}
-        
         {fir.reopenReason && (
           <div className="mt-4 p-3 bg-blue-100 rounded">
             <p className="font-semibold">Reopen Reason:</p>
             <p>{fir.reopenReason}</p>
           </div>
         )}
-        
         <div className="flex justify-between items-center mt-4">
           <button
             onClick={() => handleViewDetails(fir)}
@@ -699,349 +647,335 @@ const FIRSubmission = () => {
   };
 
   return (
-  <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-100 to-gray-200">
-  <Headeri />
-  <InveNot />
-  <ToastContainer position="top-right" autoClose={3000} />
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-100 to-gray-200">
+      <Headeri />
+      <InveNot />
+      <ToastContainer position="top-right" autoClose={3000} />
 
-  <main className="flex-grow container mx-auto px-4 py-8">
-   <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-semibold text-center mb-6 sm:mb-8 mt-4 sm:mt-8 font-serif tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600">
-  All Unsolved FIR
-</h1>
-
-    
-   <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-2 sm:px-4">
-  <div className="relative w-40 sm:w-48">
-    <button
-      onClick={() => setShowSortDropdown(!showSortDropdown)}
-      className="flex items-center justify-between gap-2 bg-gradient-to-r from-blue-700 to-blue-600 text-white px-3 py-2 rounded-md shadow-md hover:from-blue-800 hover:to-blue-700 transition-all duration-300 w-full text-xs sm:text-sm font-medium"
-    >
-      Sort Options
-      <ChevronDown
-        size={14}
-        className="transition-transform duration-200"
-        style={{ transform: showSortDropdown ? 'rotate(180deg)' : 'none' }}
-      />
-    </button>
-
-    {showSortDropdown && (
-      <div className="absolute right-0 mt-1 w-full sm:w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10 animate-fade-in">
-        <button
-          onClick={() => {
-            setSortBy("date");
-            setShowSortDropdown(false);
-          }}
-          className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-200 border-b border-gray-100"
-        >
-          <Calendar size={14} className="text-blue-600" /> Sort by Date
-        </button>
-        <button
-          onClick={() => {
-            setSortBy("priority");
-            setShowSortDropdown(false);
-          }}
-          className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-200"
-        >
-          <Flag size={14} className="text-red-600" /> Sort by Priority
-        </button>
-      </div>
-    )}
-  </div>
-</div>
-
-    
-    <div className="mt-12 space-y-16">
-      
-      <div className="mb-12">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="h-10 w-1 bg-red-500 rounded-full"></div>
-          <h2 className="text-2xl sm:text-3xl md:text-3xl font-bold text-gray-800 font-sans">
-            UnSolved Cases <span className="text-red-600">({firs.filter((f) => f?.status === "UnSolved").length})</span>
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {renderFIRsByStatus("UnSolved")}
-        </div>
-      </div>
-</div>
-  </main>
-
-  {/* Modals remain the same but with enhanced colors */}
-  {showReasonModal && (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Provide Reason for {currentStatus}</h2>
-        <textarea
-          value={reasonText}
-          onChange={(e) => setReasonText(e.target.value)}
-          className="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          rows={5}
-          placeholder={`Enter reason for marking this case as ${currentStatus}...`}
-        />
-        <div className="flex justify-end space-x-4">
-          <button
-            onClick={() => setShowReasonModal(false)}
-            className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={saveReason}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md"
-          >
-            Save Reason
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
-
-  {showReopenModal && (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Provide Reason for Reopening Case</h2>
-        <textarea
-          value={reasonText}
-          onChange={(e) => setReasonText(e.target.value)}
-          className="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          rows={5}
-          placeholder="Enter reason for reopening this case..."
-        />
-        <div className="flex justify-end space-x-4">
-          <button
-            onClick={() => setShowReopenModal(false)}
-            className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleReopenCase}
-            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors font-medium shadow-md"
-          >
-            Reopen Case
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
-
-  {showInvestigationForm && (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative pb-20 shadow-2xl border border-gray-200">
-        <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-4">Investigation Form</h2>
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <TailSpin color="#3b82f6" height={60} width={60} />
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-6 bg-blue-50 p-4 rounded-xl">
-              <div className="w-full">
-                <h3 className="text-lg font-semibold mb-3 text-gray-700">
-                  Investigation Progress: <span className="text-blue-600">{calculateProgress().toFixed(2)}%</span>
-                </h3>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${calculateProgress()}%` }}
-                  ></div>
-                </div>
-              </div>
-              {stepsSource === "default" && (
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-semibold text-center mb-6 sm:mb-8 mt-4 sm:mt-8 font-serif tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600">
+          All Unsolved FIR
+        </h1>
+        <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-2 sm:px-4">
+          <div className="relative w-40 sm:w-48">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className="flex items-center justify-between gap-2 bg-gradient-to-r from-blue-700 to-blue-600 text-white px-3 py-2 rounded-md shadow-md hover:from-blue-800 hover:to-blue-700 transition-all duration-300 w-full text-xs sm:text-sm font-medium"
+            >
+              Sort Options
+              <ChevronDown
+                size={14}
+                className="transition-transform duration-200"
+                style={{ transform: showSortDropdown ? 'rotate(180deg)' : 'none' }}
+              />
+            </button>
+            {showSortDropdown && (
+              <div className="absolute right-0 mt-1 w-full sm:w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10 animate-fade-in">
                 <button
-                  onClick={handleGenerateNewSteps}
-                  disabled={generatingSteps}
-                  className="ml-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-5 py-2.5 rounded-lg hover:from-purple-600 hover:to-purple-700 flex items-center shadow-md whitespace-nowrap"
+                  onClick={() => {
+                    setSortBy("date");
+                    setShowSortDropdown(false);
+                  }}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-200 border-b border-gray-100"
                 >
-                  {generatingSteps ? (
-                    <>
-                      <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
-                      Generating...
-                    </>
-                  ) : (
-                    "Generate New Steps"
-                  )}
+                  <Calendar size={14} className="text-blue-600" /> Sort by Date
                 </button>
-              )}
+                <button
+                  onClick={() => {
+                    setSortBy("priority");
+                    setShowSortDropdown(false);
+                  }}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-200"
+                >
+                  <Flag size={14} className="text-red-600" /> Sort by Priority
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mt-12 space-y-16">
+          <div className="mb-12">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-10 w-1 bg-red-500 rounded-full"></div>
+              <h2 className="text-2xl sm:text-3xl md:text-3xl font-bold text-gray-800 font-sans">
+                UnSolved Cases <span className="text-red-600">({firs.filter((f) => f?.status === "UnSolved").length})</span>
+              </h2>
             </div>
-            <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-sm text-blue-800 font-medium">
-                {stepsSource === "generated" 
-                  ? "🔍 These steps were dynamically generated for this case type." 
-                  : stepsSource === "default" 
-                    ? "ℹ️ Using default investigation steps (could not generate specific steps)." 
-                    : "Loading investigation steps..."}
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {renderFIRsByStatus("UnSolved")}
             </div>
-            {investigationSteps.map((phase, phaseIndex) => (
-              <div key={phaseIndex} className="mb-8 bg-gray-50 p-5 rounded-xl border border-gray-200">
-                <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">{phaseIndex + 1}</span>
-                  {phase?.phase || `Phase ${phaseIndex + 1}`}
-                </h3>
-                {phase?.steps?.map((step, stepIndex) => (
-                  <div key={stepIndex} className="mb-5">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {step || `Step ${stepIndex + 1}`}
-                    </label>
-                    <textarea
-                      value={investigationData[phaseIndex]?.[stepIndex] || ""}
-                      onChange={(e) =>
-                        handleInputChange(phaseIndex, stepIndex, e.target.value)
-                      }
-                      className="mt-1 p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      rows={4}
-                    />
+          </div>
+        </div>
+      </main>
+
+      {/* Modals remain the same but with enhanced colors */}
+      {showReasonModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Provide Reason for {currentStatus}</h2>
+            <textarea
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              className="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={5}
+              placeholder={`Enter reason for marking this case as ${currentStatus}...`}
+            />
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setShowReasonModal(false)}
+                className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveReason}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md"
+              >
+                Save Reason
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReopenModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Provide Reason for Reopening Case</h2>
+            <textarea
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              className="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={5}
+              placeholder="Enter reason for reopening this case..."
+            />
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setShowReopenModal(false)}
+                className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReopenCase}
+                className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors font-medium shadow-md"
+              >
+                Reopen Case
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInvestigationForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative pb-20 shadow-2xl border border-gray-200">
+            <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-4">Investigation Form</h2>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <TailSpin color="#3b82f6" height={60} width={60} />
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-6 bg-blue-50 p-4 rounded-xl">
+                  <div className="w-full">
+                    <h3 className="text-lg font-semibold mb-3 text-gray-700">
+                      Investigation Progress: <span className="text-blue-600">{calculateProgress().toFixed(2)}%</span>
+                    </h3>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${calculateProgress()}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  {stepsSource === "default" && (
+                    <button
+                      onClick={handleGenerateNewSteps}
+                      disabled={generatingSteps}
+                      className="ml-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-5 py-2.5 rounded-lg hover:from-purple-600 hover:to-purple-700 flex items-center shadow-md whitespace-nowrap"
+                    >
+                      {generatingSteps ? (
+                        <>
+                          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
+                          Generating...
+                        </>
+                      ) : (
+                        "Generate New Steps"
+                      )}
+                    </button>
+                  )}
+                </div>
+                <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                  <p className="text-sm text-blue-800 font-medium">
+                    {stepsSource === "generated" 
+                      ? "🔍 These steps were dynamically generated for this case type." 
+                      : stepsSource === "default" 
+                        ? "ℹ️ Using default investigation steps (could not generate specific steps)." 
+                        : "Loading investigation steps..."}
+                  </p>
+                </div>
+                {investigationSteps.map((phase, phaseIndex) => (
+                  <div key={phaseIndex} className="mb-8 bg-gray-50 p-5 rounded-xl border border-gray-200">
+                    <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">{phaseIndex + 1}</span>
+                      {phase?.phase || `Phase ${phaseIndex + 1}`}
+                    </h3>
+                    {phase?.steps?.map((step, stepIndex) => (
+                      <div key={stepIndex} className="mb-5">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {step || `Step ${stepIndex + 1}`}
+                        </label>
+                        <textarea
+                          value={investigationData[phaseIndex]?.[stepIndex] || ""}
+                          onChange={(e) =>
+                            handleInputChange(phaseIndex, stepIndex, e.target.value)
+                          }
+                          className="mt-1 p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          rows={4}
+                        />
+                      </div>
+                    ))}
                   </div>
                 ))}
-              </div>
-            ))}
-            
-            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-              <div className="flex items-center space-x-4 bg-white p-4 rounded-xl shadow-xl border border-gray-200">
-                <button
-                  onClick={() => setShowInvestigationForm(false)}
-                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveInvestigation}
-                  disabled={saveLoading}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors font-medium shadow-md flex items-center justify-center"
-                >
-                  {saveLoading ? (
-                    <>
-                      <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Investigation"
-                  )}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )}
-
-  {showModal && selectedFIR && (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
-        <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-4">FIR Details</h2>
-
-        <div className="space-y-8">
-          <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
-            <h3 className="text-xl font-semibold mb-4 text-blue-800">Complainant Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.complainantName || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Contact Number:</span> {selectedFIR.contactNumber || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Email:</span> {selectedFIR.email || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-yellow-50 p-5 rounded-xl border border-yellow-100">
-            <h3 className="text-xl font-semibold mb-4 text-yellow-800">Incident Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Type:</span> {selectedFIR.incidentType || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Date & Time:</span> {selectedFIR.incidentDateTime ? new Date(selectedFIR.incidentDateTime).toLocaleString() : 'N/A'}</p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-gray-700"><span className="font-medium">Description:</span> {selectedFIR.incidentDescription || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-green-50 p-5 rounded-xl border border-green-100">
-            <h3 className="text-xl font-semibold mb-4 text-green-800">Location Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Address:</span> {selectedFIR.incidentLocation?.address || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">City:</span> {selectedFIR.incidentLocation?.city || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">State:</span> {selectedFIR.incidentLocation?.state || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">GPS Coordinates:</span> {selectedFIR.incidentLocation?.gpsCoordinates || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-red-50 p-5 rounded-xl border border-red-100">
-            <h3 className="text-xl font-semibold mb-4 text-red-800">Suspect Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.suspectDetails?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Description:</span> {selectedFIR.suspectDetails?.description || 'N/A'}</p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-gray-700"><span className="font-medium">Known Address:</span> {selectedFIR.suspectDetails?.knownAddress || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-purple-50 p-5 rounded-xl border border-purple-100">
-            <h3 className="text-xl font-semibold mb-4 text-purple-800">Witness Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.witnessDetails?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-700"><span className="font-medium">Contact:</span> {selectedFIR.witnessDetails?.contact || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-            <h3 className="text-xl font-semibold mb-4 text-gray-800">Supporting Documents</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {selectedFIR.supportingDocuments?.length > 0 ? (
-                selectedFIR.supportingDocuments.map((url, index) => (
-                  <a 
-                    key={index} 
-                    href={url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-blue-50 hover:border-blue-200 transition-colors"
-                  >
-                    <FileText size={16} className="text-blue-600" />
-                    <span className="text-blue-600 font-medium">Document {index + 1}</span>
-                  </a>
-                ))
-              ) : (
-                <p className="text-gray-500">No supporting documents</p>
-              )}
-            </div>
+                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+                  <div className="flex items-center space-x-4 bg-white p-4 rounded-xl shadow-xl border border-gray-200">
+                    <button
+                      onClick={() => setShowInvestigationForm(false)}
+                      className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveInvestigation}
+                      disabled={saveLoading}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors font-medium shadow-md flex items-center justify-center"
+                    >
+                      {saveLoading ? (
+                        <>
+                          <TailSpin color="#ffffff" height={20} width={20} className="mr-2" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Investigation"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
+      )}
 
-        <button
-          onClick={closeModal}
-          className="mt-8 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium w-full sm:w-auto"
-        >
-          Close Details
-        </button>
-      </div>
+      {showModal && selectedFIR && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200">
+            <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-4">FIR Details</h2>
+            <div className="space-y-8">
+              <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                <h3 className="text-xl font-semibold mb-4 text-blue-800">Complainant Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.complainantName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Contact Number:</span> {selectedFIR.contactNumber || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Email:</span> {selectedFIR.email || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-yellow-50 p-5 rounded-xl border border-yellow-100">
+                <h3 className="text-xl font-semibold mb-4 text-yellow-800">Incident Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Type:</span> {selectedFIR.incidentType || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Date & Time:</span> {selectedFIR.incidentDateTime ? new Date(selectedFIR.incidentDateTime).toLocaleString() : 'N/A'}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-gray-700"><span className="font-medium">Description:</span> {selectedFIR.incidentDescription || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-green-50 p-5 rounded-xl border border-green-100">
+                <h3 className="text-xl font-semibold mb-4 text-green-800">Location Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Address:</span> {selectedFIR.incidentLocation?.address || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">City:</span> {selectedFIR.incidentLocation?.city || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">State:</span> {selectedFIR.incidentLocation?.state || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">GPS Coordinates:</span> {selectedFIR.incidentLocation?.gpsCoordinates || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-red-50 p-5 rounded-xl border border-red-100">
+                <h3 className="text-xl font-semibold mb-4 text-red-800">Suspect Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.suspectDetails?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Description:</span> {selectedFIR.suspectDetails?.description || 'N/A'}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-gray-700"><span className="font-medium">Known Address:</span> {selectedFIR.suspectDetails?.knownAddress || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-purple-50 p-5 rounded-xl border border-purple-100">
+                <h3 className="text-xl font-semibold mb-4 text-purple-800">Witness Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedFIR.witnessDetails?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-700"><span className="font-medium">Contact:</span> {selectedFIR.witnessDetails?.contact || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">Supporting Documents</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedFIR.supportingDocuments?.length > 0 ? (
+                    selectedFIR.supportingDocuments.map((url, index) => (
+                      <a 
+                        key={index} 
+                        href={url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                      >
+                        <FileText size={16} className="text-blue-600" />
+                        <span className="text-blue-600 font-medium">Document {index + 1}</span>
+                      </a>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No supporting documents</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={closeModal}
+              className="mt-8 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium w-full sm:w-auto"
+            >
+              Close Details
+            </button>
+          </div>
+        </div>
+      )}
+      <Footer />
     </div>
-  )}
-  <Footer />
-</div>
   );
 };
 
