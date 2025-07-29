@@ -33,7 +33,7 @@ const Profile = () => {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const navigate = useNavigate();
 
-  // Fetch user data from Firestore
+  // Redirect to login if not authenticated
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -77,6 +77,10 @@ const Profile = () => {
       !confirmNewPassword.trim()
     ) {
       toast.warn("Please fill all password fields.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters.");
       return;
     }
     if (newPassword !== confirmNewPassword) {
@@ -168,62 +172,67 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-200">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-200">
         <TailSpin color="#6366f1" height={80} width={80} />
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-200 min-h-screen flex flex-col">
+    <div className="bg-gradient-to-br from-gray-100 to-gray-300 min-h-screen flex flex-col">
       <HeaderLS />
       <Chatbot />
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
       <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
-        <div className="w-full max-w-md p-8 space-y-6 bg-gray-200 rounded-xl shadow-2xl transform transition-all duration-300 hover:scale-105">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-            Profile
-          </h1>
-
-          {/* Display User Email */}
-          <div className="text-center">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
-              Your Email
-            </h2>
-            <p className="text-xl sm:text-xl md:text-3xl lg:text-3xl font-bold text-center mb-6 sm:mb-8 mt-6 sm:mt-8">
-              {userData?.email}
-            </p>
+        <div className="w-full max-w-md p-8 space-y-8 bg-white/90 rounded-2xl shadow-2xl border border-gray-200 backdrop-blur-md transition-all duration-300 hover:shadow-3xl">
+          <div className="flex flex-col items-center mb-6">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center shadow-lg mb-4">
+              <span className="text-4xl text-white font-bold">
+                {userData?.name
+                  ? userData.name.charAt(0).toUpperCase()
+                  : userData?.email?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <h1 className="text-3xl font-extrabold text-gray-800 mb-2 font-serif tracking-wide">
+              {userData?.name || "User"}
+            </h1>
             <span
-              className={`inline-block text-lg font-semibold px-4 py-1 mt-3 rounded-full ${
+              className={`inline-block text-base font-semibold px-4 py-1 rounded-full shadow-sm border ${
                 emailVerified
-                  ? "bg-green-100 text-green-700 border border-green-400"
-                  : "bg-red-100 text-red-700 border border-red-400"
+                  ? "bg-green-100 text-green-700 border-green-400"
+                  : "bg-red-100 text-red-700 border-red-400"
               }`}
             >
               {emailVerified ? "Verified ✔️" : "Not Verified ❌"}
             </span>
           </div>
-          {!emailVerified && (
-            <div className="flex justify-center">
-              <button
-                className="w-full max-w-[120px] bg-yellow-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
-                onClick={sendVerificationEmail}
-              >
-                Verify Email
-              </button>
-            </div>
-          )}
-          <div className="mt-8 space-y-3 flex flex-col items-center px-2">
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-4 shadow-inner">
+            <h2 className="text-lg font-semibold text-gray-700 mb-1">Email</h2>
+            <p className="text-gray-800 font-mono text-base break-all">{userData?.email}</p>
+            {!emailVerified && (
+              <div className="flex justify-center mt-3">
+                <button
+                  className="bg-yellow-500 text-white px-4 py-2 rounded-md shadow hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm"
+                  onClick={sendVerificationEmail}
+                >
+                  Verify Email
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4 flex flex-col items-center">
             {/* Change Password Button */}
             <button
-              className="w-full max-w-[200px] bg-yellow-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+              className="w-full max-w-[220px] bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-4 py-2 rounded-md shadow-md hover:from-yellow-500 hover:to-yellow-700 transition-transform transform hover:scale-105 duration-300 font-medium text-base"
               onClick={() => setShowPasswordFields(!showPasswordFields)}
             >
               Change Password
             </button>
 
             {showPasswordFields && (
-              <div className="w-full max-w-[200px] space-y-3">
+              <div className="w-full max-w-[220px] space-y-3 bg-white rounded-lg p-4 shadow">
                 <input
                   type="password"
                   placeholder="Old password"
@@ -233,7 +242,7 @@ const Profile = () => {
                 />
                 <input
                   type="password"
-                  placeholder="New password"
+                  placeholder="New password (min 8 chars)"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -246,7 +255,7 @@ const Profile = () => {
                   className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
                 <button
-                  className="w-full max-w-[200px] bg-indigo-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-indigo-800 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+                  className="w-full bg-indigo-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-indigo-800 transition-transform transform hover:scale-105 duration-300 font-medium text-base"
                   onClick={handlePasswordChange}
                   disabled={updatingPassword}
                 >
@@ -261,14 +270,14 @@ const Profile = () => {
 
             {/* Delete Account Button */}
             <button
-              className="w-full max-w-[200px] bg-red-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-red-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+              className="w-full max-w-[220px] bg-gradient-to-r from-red-500 to-red-700 text-white px-4 py-2 rounded-md shadow-md hover:from-red-600 hover:to-red-800 transition-transform transform hover:scale-105 duration-300 font-medium text-base"
               onClick={() => setShowDeleteFields(!showDeleteFields)}
             >
               Delete Account
             </button>
 
             {showDeleteFields && (
-              <div className="w-full max-w-[200px] space-y-3">
+              <div className="w-full max-w-[220px] space-y-3 bg-white rounded-lg p-4 shadow">
                 <input
                   type="password"
                   placeholder="Enter your password"
@@ -277,7 +286,7 @@ const Profile = () => {
                   className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
                 <button
-                  className="w-full max-w-[200px] bg-red-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-red-800 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+                  className="w-full bg-red-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-red-800 transition-transform transform hover:scale-105 duration-300 font-medium text-base"
                   onClick={handleDeleteAccount}
                   disabled={deletingAccount}
                 >
@@ -292,7 +301,7 @@ const Profile = () => {
 
             {/* Logout Button */}
             <button
-              className="w-full max-w-[200px] bg-gray-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-gray-600 transition-transform transform hover:scale-105 duration-300 font-medium text-sm sm:text-base text-center"
+              className="w-full max-w-[220px] bg-gradient-to-r from-gray-500 to-gray-700 text-white px-4 py-2 rounded-md shadow-md hover:from-gray-600 hover:to-gray-800 transition-transform transform hover:scale-105 duration-300 font-medium text-base"
               onClick={handleLogout}
             >
               Logout

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Eye, Home, Bell, UserPlus } from "lucide-react";
+import { LayoutDashboard, Eye, Home, Bell, UserPlus, X } from "lucide-react";
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -10,7 +10,7 @@ function Header() {
   };
 
   return (
-    <header className="relative flex items-center justify-between p-4 bg-gray-200 shadow-md">
+    <header className="relative flex items-center justify-between p-4 bg-gray-300 shadow-md">
       {/* Logo and Title */}
       <div className="flex items-center space-x-2">
         <img
@@ -46,34 +46,41 @@ function Header() {
         </button>
       </div>
 
-      
+      {/* Overlay for mobile menu */}
+      {isMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 md:hidden"
+          style={{ background: "rgba(0,0,0,0.2)" }}
+          onClick={toggleMenu}
+        />
+      )}
 
       {/* Header Buttons */}
       <div
-        className={`${
-          isMenuOpen ? "flex flex-col" : "hidden"
+        className={`z-50 ${
+          isMenuOpen
+            ? "flex flex-col fixed left-0 top-0 w-full h-full p-8"
+            : "hidden"
         } md:flex md:flex-row md:items-center absolute md:relative right-0 top-full bg-gray-200 md:bg-transparent shadow-md md:shadow-none p-2 md:p-0 space-y-2 md:space-y-0 md:space-x-4 rounded-lg w-auto`}
+        style={isMenuOpen ? { minHeight: "100vh" } : {}}
       >
-
         {/* Add User in DB */}
         <button className="flex items-center space-x-2 text-orange-600 font-semibold hover:text-orange-500 transition focus:ring-2 focus:ring-orange-300 focus:ring-offset-2 p-2 rounded-md">
-          <UserPlus className="h-5 w-5" /> {/* New Icon */}
+          <UserPlus className="h-5 w-5" />
           <Link to="/Admin/Add/User" className="font-bold text-sm">
             Add Persons
           </Link>
         </button>
-
-         {/* Showing page */}
+        {/* Details Page */}
         <button className="flex items-center space-x-2 text-red-600 font-semibold hover:text-gray-500 transition focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 p-2 rounded-md">
-          <Bell className="h-5 w-5" /> {/* New Icon */}
+          <Bell className="h-5 w-5" />
           <Link to="/Admin/Details" className="font-bold text-sm">
             Details
           </Link>
         </button>
-
-        {/* Showing page */}
+        {/* Showing Page */}
         <button className="flex items-center space-x-2 text-gray-600 font-semibold hover:text-gray-500 transition focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 p-2 rounded-md">
-          <Eye className="h-5 w-5" /> {/* New Icon */}
+          <Eye className="h-5 w-5" />
           <Link to="/Admin/Home" className="font-bold text-sm">
             Showing Page
           </Link>
@@ -85,11 +92,19 @@ function Header() {
             Dashboard
           </Link>
         </button>
+        {/* Back to HomePage */}
         <button className="flex items-center space-x-2 text-gray-600 font-semibold hover:text-red-500 transition focus:ring-2 focus:ring-red-300 focus:ring-offset-2 p-2 rounded-md">
           <Home className="h-5 w-5" />
           <Link to="/" className="font-bold text-sm">
             Back to HomePage
           </Link>
+        </button>
+        {/* Close menu button for mobile */}
+        <button
+          onClick={toggleMenu}
+          className="md:hidden absolute top-4 right-4 text-gray-800 bg-gray-200 rounded-full p-2"
+        >
+          <X className="h-6 w-6" />
         </button>
       </div>
     </header>

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { db } from '../firebase'; // Ensure the correct path to firebase.js
+import React, { useState, useEffect } from 'react';
+import { db, auth } from '../firebase'; // Make sure auth is imported
 import { collection, addDoc } from 'firebase/firestore';
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import Navbar from "../components/Navbar";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useNavigate } from "react-router-dom";
 
 function ContactUs() {
     const [formData, setFormData] = useState({
@@ -15,6 +16,16 @@ function ContactUs() {
         message: ''
     });
     const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            if (!user) {
+                navigate("/user/login");
+            }
+        });
+        return () => unsubscribe();
+    }, [navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

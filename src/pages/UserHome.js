@@ -33,7 +33,6 @@ const DEFAULT_INVESTIGATION_STEPS = [
 ];
 
 const FIRSubmission = () => {
-  // Use the auth timeout hook (5 minutes inactivity)
   useAuthTimeout(5);
   const navigate = useNavigate();
 
@@ -47,40 +46,48 @@ const FIRSubmission = () => {
   const [showTrackInvestigation, setShowTrackInvestigation] = useState(false);
   const [sortBy, setSortBy] = useState("date");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const currentUser = auth.currentUser;
-  const currentUserId = currentUser ? currentUser.uid : null;
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        navigate("/user/login");
+      } else {
+        setCurrentUserId(user.uid);
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   useEffect(() => {
+    if (!currentUserId) {
+      setLoading(false);
+      return;
+    }
     const fetchFirs = async () => {
-      auth.onAuthStateChanged(async (user) => {
-        if (!user) {
-          navigate('/user/login');
-          setLoading(false);
-          return;
-        }
-
-        try {
-          const q = query(
-            collection(db, "firs"),
-            where("userId", "==", user.uid)
-          );
-          const querySnapshot = await getDocs(q);
-          const firData = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setFirs(firData);
-        } catch (error) {
-          toast.error("Failed to fetch FIRs");
-          console.error("Error fetching FIRs:", error);
-        } finally {
-          setLoading(false);
-        }
-      });
+      setLoading(true);
+      try {
+        const q = query(
+          collection(db, "firs"),
+          where("userId", "==", currentUserId)
+        );
+        const querySnapshot = await getDocs(q);
+        const firData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setFirs(firData);
+      } catch (error) {
+        toast.error("Failed to fetch FIRs");
+        console.error("Error fetching FIRs:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchFirs();
-  }, [navigate]);
+  }, [currentUserId]);
 
   useEffect(() => {
     if (activeCaseId) {
@@ -90,12 +97,12 @@ const FIRSubmission = () => {
           if (!firDoc.exists()) {
             throw new Error("FIR document not found");
           }
-          
+
           const firData = firDoc.data();
           const incidentType = firData.incidentType;
 
           const investigationResult = await getInvestigationSteps(activeCaseId, incidentType);
-          
+
           if (investigationResult.steps) {
             setInvestigationSteps(investigationResult.steps);
           }
@@ -262,15 +269,14 @@ const FIRSubmission = () => {
       <Verify />
       <Chatbot />
       <UserNot currentUserId={currentUserId} />
-      
-      
+
       <ToastContainer position="top-right" autoClose={3000} />
 
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-center mb-6 sm:mb-8 mt-6 sm:mt-8 font-serif italic tracking-wide">
           Your All Cases / FIRs
         </h1>
-        
+
         <div className="flex justify-center sm:justify-end mb-4 sm:mb-6 px-3 sm:px-6">
           <div className="relative w-40 sm:w-20">
             <button
@@ -541,7 +547,7 @@ const FIRSubmission = () => {
               </div>
             </div>
 
-                      <button
+            <button
               onClick={closeModal}
               className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
             >

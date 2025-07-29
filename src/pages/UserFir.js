@@ -11,6 +11,7 @@ import { AdvancedImage } from "@cloudinary/react";
 import { Cloudinary } from "@cloudinary/url-gen";
 import { auto } from "@cloudinary/url-gen/actions/resize";
 import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
+import { useNavigate } from "react-router-dom";
 
 // Initialize Cloudinary
 const cld = new Cloudinary({ cloud: { cloudName: "dtv5vzkms" } });
@@ -56,6 +57,45 @@ const FIRSubmission = () => {
   const [uploading, setUploading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [idCardUploaded, setIdCardUploaded] = useState(false);
+  const navigate = useNavigate();
+
+  // Constraints for fields
+  const constraints = {
+    complainantName: {
+      minLength: 3,
+      maxLength: 50,
+      pattern: /^[A-Za-z\s]+$/,
+      message: "Name should be 3-50 characters and only contain letters and spaces.",
+    },
+    contactNumber: {
+      pattern: /^\d{11}$/,
+      message: "Contact number must be exactly 11 digits.",
+    },
+    email: {
+      pattern: /^\S+@\S+\.\S+$/,
+      message: "Please enter a valid email address.",
+    },
+    incidentDescription: {
+      minLength: 20,
+      maxLength: 1000,
+      message: "Description should be between 20 and 1000 characters.",
+    },
+    customIncidentType: {
+      minLength: 3,
+      maxLength: 50,
+      message: "Custom incident type should be 3-50 characters.",
+    },
+  };
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        navigate("/user/login");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   // Verify ID card using Tesseract.js backend
   const verifyIdCard = async (imageUrl) => {
@@ -294,7 +334,7 @@ const FIRSubmission = () => {
     toast.info("Document removed");
   };
 
-  // Form validation
+  // Form validation with constraints
   const validateForm = () => {
     const requiredFields = [
       "complainantName",
@@ -310,13 +350,47 @@ const FIRSubmission = () => {
       return false;
     }
 
-    if (!/^\d{11}$/.test(newFIR.contactNumber)) {
-      toast.error("Invalid contact number (must be 11 digits)");
+    // Name constraint
+    if (
+      !constraints.complainantName.pattern.test(newFIR.complainantName) ||
+      newFIR.complainantName.length < constraints.complainantName.minLength ||
+      newFIR.complainantName.length > constraints.complainantName.maxLength
+    ) {
+      toast.error(constraints.complainantName.message);
       return false;
     }
 
-    if (newFIR.email && !/^\S+@\S+\.\S+$/.test(newFIR.email)) {
-      toast.error("Please enter a valid email address");
+    // Contact number constraint
+    if (!constraints.contactNumber.pattern.test(newFIR.contactNumber)) {
+      toast.error(constraints.contactNumber.message);
+      return false;
+    }
+
+    // Email constraint (if provided)
+    if (
+      newFIR.email &&
+      !constraints.email.pattern.test(newFIR.email)
+    ) {
+      toast.error(constraints.email.message);
+      return false;
+    }
+
+    // Incident description constraint
+    if (
+      newFIR.incidentDescription.length < constraints.incidentDescription.minLength ||
+      newFIR.incidentDescription.length > constraints.incidentDescription.maxLength
+    ) {
+      toast.error(constraints.incidentDescription.message);
+      return false;
+    }
+
+    // Custom incident type constraint (if "Other" is selected)
+    if (
+      newFIR.incidentType === "Other" &&
+      (newFIR.customIncidentType.length < constraints.customIncidentType.minLength ||
+        newFIR.customIncidentType.length > constraints.customIncidentType.maxLength)
+    ) {
+      toast.error(constraints.customIncidentType.message);
       return false;
     }
 

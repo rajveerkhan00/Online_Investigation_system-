@@ -9,6 +9,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
 import Chatbot from "../components/ChatBotUI";
 import { ChevronDown, Calendar, Flag } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const investigationSteps = [
   {
@@ -88,6 +89,17 @@ const FIRSubmission = () => {
   const [showTrackInvestigation, setShowTrackInvestigation] = useState(false);
   const [sortBy, setSortBy] = useState("date");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const navigate = useNavigate();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        navigate("/user/login");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   useEffect(() => {
     const fetchFirs = async () => {
@@ -507,4 +519,3 @@ const FIRSubmission = () => {
 };
 
 export default FIRSubmission;
-

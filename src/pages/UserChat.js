@@ -4,6 +4,7 @@ import { collection, query, where, getDocs, doc, setDoc, addDoc, serverTimestamp
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { useNavigate } from "react-router-dom";
 
 const UserChat = () => {
   const [investigators, setInvestigators] = useState([]);
@@ -13,64 +14,76 @@ const UserChat = () => {
   const [loading, setLoading] = useState(true);
   const [showInvestigatorList, setShowInvestigatorList] = useState(true);
   const messagesEndRef = useRef(null);
+  const navigate = useNavigate();
 
- useEffect(() => {
-  const fetchAssignedInvestigators = async () => {
-    try {
-      setLoading(true);
-      
-      // Get current user ID
-      const currentUserId = auth.currentUser?.uid;
-      if (!currentUserId) {
-        setLoading(false);
-        return;
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        navigate("/user/login");
       }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
-      // Query FIRs where this user is the complainant (userId)
-      const firsQuery = query(
-        collection(db, 'firs'),
-        where('userId', '==', currentUserId)
-      );
-      const firsSnapshot = await getDocs(firsQuery);
+  useEffect(() => {
+    const fetchAssignedInvestigators = async () => {
+      try {
+        setLoading(true);
 
-      // Get unique investigator IDs assigned to user's FIRs
-      const assignedInvestigatorIds = [];
-      firsSnapshot.forEach(doc => {
-        const firData = doc.data();
-        if (firData.assignedInvestigator && !assignedInvestigatorIds.includes(firData.assignedInvestigator)) {
-          assignedInvestigatorIds.push(firData.assignedInvestigator);
+        // Get current user ID
+        const currentUserId = auth.currentUser?.uid;
+        if (!currentUserId) {
+          setLoading(false);
+          return;
         }
-      });
 
-      // If no investigators found, set empty and return
-      if (assignedInvestigatorIds.length === 0) {
-        setInvestigators([]);
+        // Query FIRs where this user is the complainant (userId)
+        const firsQuery = query(
+          collection(db, 'firs'),
+          where('userId', '==', currentUserId)
+        );
+        const firsSnapshot = await getDocs(firsQuery);
+
+        // Get unique investigator IDs assigned to user's FIRs
+        const assignedInvestigatorIds = [];
+        firsSnapshot.forEach(doc => {
+          const firData = doc.data();
+          if (firData.assignedInvestigator && !assignedInvestigatorIds.includes(firData.assignedInvestigator)) {
+            assignedInvestigatorIds.push(firData.assignedInvestigator);
+          }
+        });
+
+        // If no investigators found, set empty and return
+        if (assignedInvestigatorIds.length === 0) {
+          setInvestigators([]);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch investigator details for the assigned investigators
+        const investigatorsQuery = query(
+          collection(db, 'investigatordata'),
+          where('uid', 'in', assignedInvestigatorIds)
+        );
+        const investigatorsSnapshot = await getDocs(investigatorsQuery);
+
+        const investigatorsList = investigatorsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        setInvestigators(investigatorsList);
         setLoading(false);
-        return;
+      } catch (error) {
+        console.error('Error fetching assigned investigators:', error);
+        setLoading(false);
       }
+    };
 
-      // Fetch investigator details for the assigned investigators
-      const investigatorsQuery = query(
-        collection(db, 'investigatordata'),
-        where('uid', 'in', assignedInvestigatorIds)
-      );
-      const investigatorsSnapshot = await getDocs(investigatorsQuery);
+    fetchAssignedInvestigators();
+  }, []);
 
-      const investigatorsList = investigatorsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      setInvestigators(investigatorsList);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching assigned investigators:', error);
-      setLoading(false);
-    }
-  };
-
-  fetchAssignedInvestigators();
-}, []);
   // Load messages when an investigator is selected
   useEffect(() => {
     if (!selectedInvestigator || !auth.currentUser) return;
@@ -85,7 +98,7 @@ const UserChat = () => {
         ...doc.data()
       }));
       setMessages(loadedMessages);
-      
+
       // Scroll to bottom when new messages arrive
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -140,10 +153,10 @@ const UserChat = () => {
     <>
       <Header />
       <Navbar />
-      
+
       <div className="flex flex-col md:flex-row h-[calc(100vh-120px)] bg-gray-100 mt-2 mb-20">
         {/* Mobile Toggle Button */}
-        <button 
+        <button
           onClick={() => setShowInvestigatorList(!showInvestigatorList)}
           className="md:hidden p-2 bg-gray-200 text-gray-700 flex items-center justify-center"
         >
@@ -210,7 +223,7 @@ const UserChat = () => {
             <>
               {/* Chat Header with back button for mobile */}
               <div className="p-3 bg-white border-b border-gray-200 flex items-center">
-                <button 
+                <button
                   onClick={() => setShowInvestigatorList(true)}
                   className="md:hidden mr-2 text-gray-600"
                 >
@@ -366,7 +379,6 @@ const UserChat = () => {
           )}
         </div>
       </div>
-      
     </>
   );
 };

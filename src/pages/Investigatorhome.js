@@ -3,6 +3,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Headeri from "../components/Headeri";
 import Footer from "../components/Footeri";
+import Prediction from "../components/prediction";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, updateDoc, setDoc, query, where, getDoc } from "firebase/firestore";
 import { TailSpin } from "react-loader-spinner";
@@ -666,6 +667,7 @@ const FIRSubmission = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-100 to-gray-200">
       <Headeri />
       <InveNot />
+      <Prediction />
       <ToastContainer position="top-right" autoClose={3000} />
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-semibold text-center mb-6 sm:mb-8 mt-4 sm:mt-8 font-serif tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600">
